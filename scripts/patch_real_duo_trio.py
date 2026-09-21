@@ -11,6 +11,7 @@ m = main.read_text()
 
 old_import = "import android.widget.Toast\n"
 new_import = """import android.widget.Toast
+import android.widget.ImageView
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -24,6 +25,7 @@ import android.view.animation.DecelerateInterpolator
 old_attach = """        FoldRenderExperiment.attach(this)
         // Reassert the token after recreation"""
 new_attach = """        installTrioViewportTransitionProbe()
+        installTrioSceneLayer()
         installTrioManaLayer()
         // Reassert the token after recreation"""
 
@@ -33,6 +35,10 @@ new_marker = """    private var trioLastViewportWidth = 0
     private var trioRevealRunning = false
     private var trioLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
     private var trioManaView: TrioManaView? = null
+    private var trioSceneFront: ImageView? = null
+    private var trioSceneBack: ImageView? = null
+    private var trioSceneIndex = 0
+    private var trioSceneRunnable: Runnable? = null
     private data class TrioBurst(val x: Float, val y: Float, val born: Long, val seed: Int)
 
     private fun installTrioViewportTransitionProbe() {
@@ -60,6 +66,72 @@ new_marker = """    private var trioLastViewportWidth = 0
         root.viewTreeObserver.addOnGlobalLayoutListener(listener)
     }
 
+    private fun installTrioSceneLayer() {
+        val host = findViewById<ViewGroup>(android.R.id.content) ?: return
+        if (trioSceneFront != null) return
+        fun sceneView() = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            isClickable = false
+            isFocusable = false
+            alpha = 0f
+            scaleX = 1.035f
+            scaleY = 1.035f
+        }
+        val back = sceneView()
+        val front = sceneView()
+        host.addView(back, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        host.addView(front, 1, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        trioSceneBack = back
+        trioSceneFront = front
+        showTrioScene(0, false)
+        scheduleTrioScene()
+    }
+
+    private fun trioSceneResource(index: Int): Int {
+        val names = arrayOf("trio_roxy", "trio_sylphie", "trio_eris")
+        return resources.getIdentifier(names[index % names.size], "drawable", packageName)
+    }
+
+    private fun showTrioScene(index: Int, animate: Boolean) {
+        val front = trioSceneFront ?: return
+        val back = trioSceneBack ?: return
+        val res = trioSceneResource(index)
+        if (res == 0) return
+        val oldFront = front
+        val newFront = back
+        newFront.setImageResource(res)
+        newFront.alpha = if (animate) 0f else 0.50f
+        newFront.scaleX = 1.045f
+        newFront.scaleY = 1.045f
+        newFront.animate().cancel()
+        oldFront.animate().cancel()
+        if (animate) {
+            newFront.animate().alpha(0.50f).scaleX(1.015f).scaleY(1.015f).setDuration(1800L).start()
+            oldFront.animate().alpha(0f).setDuration(1800L).start()
+        } else {
+            newFront.scaleX = 1.015f
+            newFront.scaleY = 1.015f
+            oldFront.alpha = 0f
+        }
+        trioSceneFront = newFront
+        trioSceneBack = oldFront
+        trioSceneIndex = index % 3
+        trioManaView?.setCharacter(trioSceneIndex)
+    }
+
+    private fun scheduleTrioScene() {
+        val host = findViewById<View>(android.R.id.content) ?: return
+        trioSceneRunnable?.let(host::removeCallbacks)
+        val task = object : Runnable {
+            override fun run() {
+                showTrioScene((trioSceneIndex + 1) % 3, true)
+                host.postDelayed(this, 30000L)
+            }
+        }
+        trioSceneRunnable = task
+        host.postDelayed(task, 30000L)
+    }
+
     private fun installTrioManaLayer() {
         val host = findViewById<ViewGroup>(android.R.id.content) ?: return
         if (trioManaView != null) return
@@ -84,6 +156,9 @@ new_marker = """    private var trioLastViewportWidth = 0
         private val bursts = ArrayDeque<TrioBurst>()
         private var lastTouchBurst = 0L
         private var unfoldBorn = 0L
+        private var character = 0
+
+        fun setCharacter(value: Int) { character = value % 3; invalidate() }
 
         fun manaTouch(x: Float, y: Float, now: Long) {
             if (now - lastTouchBurst < 42L) return
@@ -113,11 +188,12 @@ new_marker = """    private var trioLastViewportWidth = 0
                 val y = h - phase * (h + 120f)
                 val r = 2.2f + (i % 4) * 1.2f
                 paint.style = Paint.Style.FILL
-                paint.color = Color.argb(82, 164, 226, 255)
+                val rgb = when (character) { 1 -> intArrayOf(214, 255, 226); 2 -> intArrayOf(255, 126, 72); else -> intArrayOf(164, 226, 255) }
+                paint.color = Color.argb(82, rgb[0], rgb[1], rgb[2])
                 canvas.drawCircle(x, y, r, paint)
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = 1.2f
-                paint.color = Color.argb(46, 220, 247, 255)
+                paint.color = Color.argb(46, rgb[0], rgb[1], rgb[2])
                 canvas.drawCircle(x, y, r + 3.2f, paint)
             }
 
@@ -129,7 +205,8 @@ new_marker = """    private var trioLastViewportWidth = 0
                 val alpha = ((1f - t) * 205).toInt()
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = 2.4f + (1f - t) * 3f
-                paint.color = Color.argb(alpha, 142, 226, 255)
+                val burstRgb = when (character) { 1 -> intArrayOf(196, 255, 214); 2 -> intArrayOf(255, 102, 48); else -> intArrayOf(142, 226, 255) }
+                paint.color = Color.argb(alpha, burstRgb[0], burstRgb[1], burstRgb[2])
                 canvas.drawCircle(b.x, b.y, 12f + t * 98f, paint)
                 repeat(8) { j ->
                     val angle = j * 0.785398f + t * 2.4f + (b.seed % 17) * 0.05f
@@ -137,7 +214,7 @@ new_marker = """    private var trioLastViewportWidth = 0
                     val px = b.x + kotlin.math.cos(angle) * radius
                     val py = b.y + kotlin.math.sin(angle) * radius - t * 24f
                     paint.style = Paint.Style.FILL
-                    paint.color = Color.argb((alpha * 0.86f).toInt(), 190, 240, 255)
+                    paint.color = Color.argb((alpha * 0.86f).toInt(), burstRgb[0], burstRgb[1], burstRgb[2])
                     canvas.drawCircle(px, py, 2.3f + (j % 3), paint)
                 }
             }
@@ -192,6 +269,10 @@ new_destroy = """    override fun onDestroy() {
             window.decorView.viewTreeObserver.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(listener)
         }
         trioLayoutListener = null
+        trioSceneRunnable?.let { findViewById<View>(android.R.id.content)?.removeCallbacks(it) }
+        trioSceneRunnable = null
+        trioSceneFront = null
+        trioSceneBack = null
         trioManaView = null
         recreatingShadeSetup = isChangingConfigurations
 """
