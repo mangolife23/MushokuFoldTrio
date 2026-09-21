@@ -7,6 +7,9 @@ on:
     paths:
       - .github/workflows/build-trio-alpha.yml
       - scripts/patch_real_duo_trio.py
+      - trio_roxy.jpg
+      - trio_sylphie.jpg
+      - trio_eris.jpg
   workflow_dispatch:
 
 jobs:
@@ -30,6 +33,18 @@ jobs:
           echo "Expected: $EXPECTED"
           echo "Actual:   $ACTUAL"
           test "$ACTUAL" = "$EXPECTED"
+
+      - name: Package Trio artwork
+        run: |
+          test -f trio_roxy.jpg
+          test -f trio_sylphie.jpg
+          test -f trio_eris.jpg
+          mkdir -p duo-stock/app/src/main/res/drawable-nodpi
+          cp trio_roxy.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_roxy.jpg
+          cp trio_sylphie.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_sylphie.jpg
+          cp trio_eris.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_eris.jpg
+          ls -lh duo-stock/app/src/main/res/drawable-nodpi/trio_*.jpg
+          sha256sum trio_roxy.jpg trio_sylphie.jpg trio_eris.jpg
 
       - name: Patch genuine Duo with Fold7-safe Trio foundation
         run: python3 scripts/patch_real_duo_trio.py duo-stock
@@ -57,14 +72,14 @@ jobs:
       - name: Verify and fingerprint APK
         run: |
           test -f duo-stock/app/build/outputs/apk/debug/app-debug.apk
-          cp duo-stock/app/build/outputs/apk/debug/app-debug.apk MushokuFoldTrio-Alpha-1.apk
-          sha256sum MushokuFoldTrio-Alpha-1.apk | tee MushokuFoldTrio-Alpha-1.sha256
+          cp duo-stock/app/build/outputs/apk/debug/app-debug.apk MushokuFoldTrio-Alpha-3.apk
+          sha256sum MushokuFoldTrio-Alpha-3.apk | tee MushokuFoldTrio-Alpha-3.sha256
 
       - name: Upload MushokuFoldTrio Alpha
         uses: actions/upload-artifact@v4
         with:
-          name: MushokuFoldTrio-Alpha-1
+          name: MushokuFoldTrio-Alpha-3
           path: |
-            MushokuFoldTrio-Alpha-1.apk
-            MushokuFoldTrio-Alpha-1.sha256
+            MushokuFoldTrio-Alpha-3.apk
+            MushokuFoldTrio-Alpha-3.sha256
           if-no-files-found: error
