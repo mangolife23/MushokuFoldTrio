@@ -80,6 +80,30 @@ jobs:
           cp duo-stock/app/build/outputs/apk/debug/app-debug.apk MushokuFoldTrio-Alpha-3.apk
           sha256sum MushokuFoldTrio-Alpha-3.apk | tee MushokuFoldTrio-Alpha-3.sha256
 
+      - name: Generate APK security provenance report
+        run: |
+          APK="MushokuFoldTrio-Alpha-3.apk"
+          AAPT="/usr/local/lib/android/sdk/build-tools/36.0.0/aapt2"
+          APKSIGNER="/usr/local/lib/android/sdk/build-tools/36.0.0/apksigner"
+          {
+            echo "MushokuFoldTrio APK security provenance"
+            echo "======================================"
+            echo "integration_commit=$(git rev-parse HEAD)"
+            echo "upstream_duo_commit=$(git -C duo-stock rev-parse HEAD)"
+            echo
+            echo "SHA-256"
+            sha256sum "$APK"
+            echo
+            echo "APK signing certificate"
+            "$APKSIGNER" verify --verbose --print-certs "$APK"
+            echo
+            echo "Manifest permissions/features"
+            "$AAPT" dump permissions "$APK"
+            echo
+            echo "Badging/package identity"
+            "$AAPT" dump badging "$APK" | head -n 40
+          } | tee MushokuFoldTrio-Alpha-3-security.txt
+
       - name: Upload MushokuFoldTrio Alpha
         uses: actions/upload-artifact@v4
         with:
@@ -87,4 +111,5 @@ jobs:
           path: |
             MushokuFoldTrio-Alpha-3.apk
             MushokuFoldTrio-Alpha-3.sha256
+            MushokuFoldTrio-Alpha-3-security.txt
           if-no-files-found: error
