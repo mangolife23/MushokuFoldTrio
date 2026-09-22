@@ -48,6 +48,7 @@ new_marker = """    private var trioLastViewportWidth = 0
             if (width <= 0) return@OnGlobalLayoutListener
             val previous = trioLastViewportWidth
             trioLastViewportWidth = width
+            updateTrioSceneFraming()
             if (previous <= 0 || trioRevealRunning) return@OnGlobalLayoutListener
             val density = resources.displayMetrics.density.coerceAtLeast(1f)
             val previousDp = previous / density
@@ -64,18 +65,30 @@ new_marker = """    private var trioLastViewportWidth = 0
         val host = findViewById<ViewGroup>(android.R.id.content) ?: return
         if (trioSceneFront != null) return
         fun sceneView() = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            adjustViewBounds = false
+            setBackgroundColor(Color.BLACK)
             isClickable = false
             isFocusable = false
             alpha = 0f
-            scaleX = 1.035f
-            scaleY = 1.035f
+            scaleX = 1f
+            scaleY = 1f
         }
         val back = sceneView(); val front = sceneView()
         host.addView(back, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         host.addView(front, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         trioSceneBack = back; trioSceneFront = front
-        showTrioScene(0, false); scheduleTrioScene()
+        showTrioScene(0, false); updateTrioSceneFraming(); scheduleTrioScene()
+    }
+
+    private fun updateTrioSceneFraming() {
+        val density = resources.displayMetrics.density.coerceAtLeast(1f)
+        val widthDp = window.decorView.width / density
+        // Cover screen: show the whole illustration instead of CENTER_CROP cutting off faces.
+        // Unfolded screen: use a gentle fit while retaining the full character composition.
+        val type = if (widthDp in 1f..649.99f) ImageView.ScaleType.CENTER_INSIDE else ImageView.ScaleType.FIT_CENTER
+        trioSceneFront?.scaleType = type
+        trioSceneBack?.scaleType = type
     }
 
     private fun trioSceneResource(index: Int): Int {
@@ -89,15 +102,14 @@ new_marker = """    private var trioLastViewportWidth = 0
         val oldFront = front; val newFront = back
         newFront.setImageResource(res)
         newFront.alpha = if (animate) 0f else 1.0f
-        newFront.scaleX = 1.045f; newFront.scaleY = 1.045f
+        newFront.scaleX = 1f; newFront.scaleY = 1f
         newFront.animate().cancel(); oldFront.animate().cancel()
         if (animate) {
-            newFront.animate().alpha(1.0f).scaleX(1.015f).scaleY(1.015f).setDuration(1800L).start()
+            newFront.animate().alpha(1.0f).setDuration(1800L).start()
             oldFront.animate().alpha(0f).setDuration(1800L).start()
-        } else {
-            newFront.scaleX = 1.015f; newFront.scaleY = 1.015f; oldFront.alpha = 0f
-        }
+        } else { oldFront.alpha = 0f }
         trioSceneFront = newFront; trioSceneBack = oldFront; trioSceneIndex = index % 3
+        updateTrioSceneFraming()
         trioManaView?.setCharacter(trioSceneIndex)
     }
 
@@ -177,4 +189,4 @@ for old,new,label in ((old_import,new_import,"imports"),(old_attach,new_attach,"
     if m.count(old) != 1: raise SystemExit(f"Pinned upstream {label} block changed; refusing unsafe patch")
     m=m.replace(old,new,1)
 main.write_text(m)
-print("Applied golden Build #4 Trio foundation with opaque artwork")
+print("Applied Build #20 foundation with Fold7-safe full-artwork framing")
