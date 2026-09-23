@@ -23,8 +23,11 @@ new = '''    private fun updateTrioSceneFraming() {
         val density = resources.displayMetrics.density.coerceAtLeast(1f)
         val widthDp = window.decorView.width / density
         val cover = widthDp in 1f..649.99f
-        // Fill the viewport again, but bias each character vertically so CENTER_CROP
-        // keeps the face/upper body instead of blindly centering the source image.
+
+        // Artwork-only correction: always fill the actual launcher viewport so no
+        // letterbox/gap can appear above the image. Keep DuoLauncher UI untouched.
+        // CENTER_CROP preserves aspect ratio and crops overflow rather than fitting
+        // the entire bitmap inside the view.
         val focusY = if (cover) {
             when (trioSceneIndex) {
                 0 -> 0.30f // Roxy
@@ -38,12 +41,18 @@ new = '''    private fun updateTrioSceneFraming() {
                 else -> 0.38f
             }
         }
+
         fun apply(view: ImageView?) {
             view ?: return
             view.scaleType = ImageView.ScaleType.CENTER_CROP
+            // Do not translate the ImageView itself: translating it can expose the
+            // host background as a visible top strip. Let CENTER_CROP fill every edge.
+            view.translationX = 0f
+            view.translationY = 0f
+            view.scaleX = 1f
+            view.scaleY = 1f
             view.pivotX = view.width * 0.5f
             view.pivotY = view.height * focusY
-            view.translationY = if (cover) view.height * (0.50f - focusY) * 0.34f else 0f
         }
         apply(trioSceneFront)
         apply(trioSceneBack)
@@ -53,4 +62,4 @@ new = '''    private fun updateTrioSceneFraming() {
 if s.count(old) != 1:
     raise SystemExit("Expected Build #21 framing block not found; refusing unsafe patch")
 main.write_text(s.replace(old, new, 1))
-print("Applied character-aware full-screen Trio focus framing")
+print("Applied edge-to-edge Trio artwork framing with launcher UI unchanged")
