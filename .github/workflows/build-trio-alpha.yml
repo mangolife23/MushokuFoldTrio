@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - native-animation-prototype
     paths:
       - .github/workflows/build-trio-alpha.yml
       - scripts/patch_real_duo_trio.py
