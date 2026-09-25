@@ -11,6 +11,7 @@ on:
       - scripts/apply_trio_background_layer.py
       - scripts/apply_trio_app_search.py
       - scripts/apply_trio_discover_diagnostics.py
+      - scripts/configure_trio_signing.py
       - trio_roxy.jpg
       - trio_roxy_cutout.png
       - trio_sylphie.jpg
@@ -46,6 +47,7 @@ jobs:
         run: |
           sed -i 's/applicationId = "com.jake.duolauncher"/applicationId = "com.otakuhoarder.mushokufold.nativeprototype"/' duo-stock/app/build.gradle.kts
           grep -F 'applicationId = "com.otakuhoarder.mushokufold.nativeprototype"' duo-stock/app/build.gradle.kts
+          python3 scripts/configure_trio_signing.py duo-stock
 
       - name: Package Trio artwork
         run: |
@@ -92,7 +94,26 @@ jobs:
 
       - name: Build native prototype
         working-directory: duo-stock
-        run: ./gradlew --no-daemon :app:assembleDebug
+        env:
+          TRIO_KEYSTORE_BASE64: ${{ secrets.TRIO_KEYSTORE_BASE64 }}
+          TRIO_STORE_PASSWORD: ${{ secrets.TRIO_STORE_PASSWORD }}
+          TRIO_KEY_ALIAS: ${{ secrets.TRIO_KEY_ALIAS }}
+          TRIO_KEY_PASSWORD: ${{ secrets.TRIO_KEY_PASSWORD }}
+        run: |
+          if [ -n "$TRIO_KEYSTORE_BASE64" ]; then
+            test -n "$TRIO_STORE_PASSWORD" && test -n "$TRIO_KEY_ALIAS" && test -n "$TRIO_KEY_PASSWORD"
+            printf '%s' "$TRIO_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/trio-signing.jks"
+            chmod 600 "$RUNNER_TEMP/trio-signing.jks"
+            export DUO_RELEASE_STORE_FILE="$RUNNER_TEMP/trio-signing.jks"
+            export DUO_RELEASE_STORE_PASSWORD="$TRIO_STORE_PASSWORD"
+            export DUO_RELEASE_KEY_ALIAS="$TRIO_KEY_ALIAS"
+            export DUO_RELEASE_KEY_PASSWORD="$TRIO_KEY_PASSWORD"
+            echo 'TRIO_SIGNING_MODE=stable' >> "$GITHUB_ENV"
+          else
+            test -z "$TRIO_STORE_PASSWORD" && test -z "$TRIO_KEY_ALIAS" && test -z "$TRIO_KEY_PASSWORD"
+            echo 'TRIO_SIGNING_MODE=ephemeral-debug' >> "$GITHUB_ENV"
+          fi
+          ./gradlew --no-daemon :app:assembleDebug
 
       - name: Verify and fingerprint APK
         run: |
@@ -112,6 +133,7 @@ jobs:
             echo "upstream_duo_commit=$(git -C duo-stock rev-parse HEAD)"
             echo "workflow_run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo "runner_image=${ImageOS:-unknown} ${ImageVersion:-unknown}"
+            echo "prototype_signing_mode=${TRIO_SIGNING_MODE:-unknown}"
             echo
             echo "Toolchain"
             java -version 2>&1

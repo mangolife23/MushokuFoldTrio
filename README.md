@@ -17,3 +17,11 @@ Samsung Galaxy Z Fold7 launcher integration based on genuine DuoLauncher, expand
 - **Eris** — warm red/orange sword-energy accents.
 
 Only adult-era artwork will be used for the three character scene collections.
+
+## Prototype APK signing
+
+Actions currently falls back to a fresh runner debug key. Its APK can build successfully but cannot update an earlier APK signed by another runner. The security report in each artifact records `prototype_signing_mode` and the certificate fingerprint.
+
+For repeatable updates, create a private Android keystore and configure these GitHub Actions repository secrets: `TRIO_KEYSTORE_BASE64` (base64 of the keystore file), `TRIO_STORE_PASSWORD`, `TRIO_KEY_ALIAS`, and `TRIO_KEY_PASSWORD`. Keep the keystore and passwords outside this public repository. The workflow uses the key only for the isolated `com.otakuhoarder.mushokufold.nativeprototype` APK. All four secrets must be set together; otherwise the build fails rather than publishing an unexpectedly signed APK.
+
+The first stable-signed APK cannot update a previously installed runner-signed prototype. After that one-time install migration, keep the same private keystore so subsequent builds can update in place.
