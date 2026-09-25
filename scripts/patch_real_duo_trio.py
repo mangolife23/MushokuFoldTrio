@@ -15,6 +15,8 @@ import android.widget.ImageView
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -190,6 +192,8 @@ new_marker = """    private var trioLastViewportWidth = 0
 
     private inner class TrioManaView : View(this) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG); private val bursts = ArrayDeque<TrioBurst>()
+        private val droplet = Path()
+        private val windArc = RectF()
         private var lastTouchBurst = 0L; private var unfoldBorn = 0L; private var character = 0
         fun setCharacter(value: Int) { character = value % 3; invalidate() }
         fun manaTouch(x: Float, y: Float, now: Long) {
@@ -200,13 +204,33 @@ new_marker = """    private var trioLastViewportWidth = 0
         fun unfoldBurst() { unfoldBorn = android.os.SystemClock.uptimeMillis(); postInvalidateOnAnimation() }
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas); val now = android.os.SystemClock.uptimeMillis(); val w = width.toFloat().coerceAtLeast(1f); val h = height.toFloat().coerceAtLeast(1f)
+            val rgb = when (character) { 1 -> intArrayOf(214,255,226); 2 -> intArrayOf(255,126,72); else -> intArrayOf(164,226,255) }
             repeat(16) { i ->
                 val phase = ((now * (3L + i % 2) + i * 7919L) % 32000L) / 32000f
                 val x = ((i * 0.6180339f + 0.13f) % 1f) * w + kotlin.math.sin(phase * 6.283f + i * 0.7f) * 18f
                 val y = h - phase * (h + 120f); val r = 2.2f + (i % 4) * 1.2f
-                val rgb = when (character) { 1 -> intArrayOf(214,255,226); 2 -> intArrayOf(255,126,72); else -> intArrayOf(164,226,255) }
-                paint.style = Paint.Style.FILL; paint.color = Color.argb(82,rgb[0],rgb[1],rgb[2]); canvas.drawCircle(x,y,r,paint)
-                paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.2f; paint.color = Color.argb(46,rgb[0],rgb[1],rgb[2]); canvas.drawCircle(x,y,r+3.2f,paint)
+                when (character) {
+                    1 -> { // Sylphie: short, drifting wind curves.
+                        paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.4f
+                        paint.color = Color.argb(86,rgb[0],rgb[1],rgb[2])
+                        windArc.set(x-r*3f,y-r*1.7f,x+r*3f,y+r*1.7f)
+                        canvas.drawArc(windArc, 205f, 140f, false, paint)
+                    }
+                    2 -> { // Eris: warm rising embers with a fading tail.
+                        paint.style = Paint.Style.STROKE; paint.strokeWidth = r*.8f
+                        paint.color = Color.argb(78,rgb[0],rgb[1],rgb[2])
+                        canvas.drawLine(x+r*.7f,y+r*2.5f,x,y,paint)
+                        paint.style = Paint.Style.FILL; paint.color = Color.argb(120,rgb[0],rgb[1],rgb[2])
+                        canvas.drawCircle(x,y,r*.65f,paint)
+                    }
+                    else -> { // Roxy: pointed water droplets.
+                        paint.style = Paint.Style.FILL; paint.color = Color.argb(90,rgb[0],rgb[1],rgb[2])
+                        droplet.reset(); droplet.moveTo(x,y-r*2.2f)
+                        droplet.cubicTo(x-r*1.8f,y+r*.5f,x-r,y+r*1.5f,x,y+r*1.5f)
+                        droplet.cubicTo(x+r,y+r*1.5f,x+r*1.8f,y+r*.5f,x,y-r*2.2f)
+                        droplet.close(); canvas.drawPath(droplet,paint)
+                    }
+                }
             }
             val expired = ArrayList<TrioBurst>()
             for (b in bursts) {
