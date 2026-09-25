@@ -43,7 +43,9 @@ new = '''    private fun updateTrioSceneFraming() {
 
         fun apply(view: ImageView?) {
             view ?: return
-            view.scaleType = ImageView.ScaleType.CENTER_CROP
+            // Roxy's transparent portrait shows the whole figure; the other
+            // landscape scenes continue filling the viewport as before.
+            view.scaleType = if (view.tag == 0) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
             // The animation owns translation and scale. Resetting them here snaps
             // the artwork on a scene switch or a Fold7 layout pass.
             view.pivotX = view.width * 0.5f

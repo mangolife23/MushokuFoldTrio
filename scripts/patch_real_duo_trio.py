@@ -105,7 +105,7 @@ new_marker = """    private var trioLastViewportWidth = 0
     }
 
     private fun trioSceneResource(index: Int): Int {
-        val names = arrayOf("trio_roxy", "trio_sylphie", "trio_eris")
+        val names = arrayOf("trio_roxy_cutout", "trio_sylphie", "trio_eris")
         return resources.getIdentifier(names[index % names.size], "drawable", packageName)
     }
 
@@ -114,6 +114,7 @@ new_marker = """    private var trioLastViewportWidth = 0
         val res = trioSceneResource(index); if (res == 0) return
         val oldFront = front; val newFront = back
         newFront.setImageResource(res)
+        newFront.tag = index % 3
         newFront.alpha = if (animate) 0f else 1.0f
         // Keep the incoming art covered until the next idle frame takes over.
         newFront.scaleX = oldFront.scaleX; newFront.scaleY = oldFront.scaleY

@@ -10,6 +10,7 @@ on:
       - scripts/apply_trio_focus_framing.py
       - scripts/apply_trio_background_layer.py
       - trio_roxy.jpg
+      - trio_roxy_cutout.png
       - trio_sylphie.jpg
       - trio_eris.jpg
   workflow_dispatch:
@@ -47,14 +48,16 @@ jobs:
       - name: Package Trio artwork
         run: |
           test -f trio_roxy.jpg
+          test -f trio_roxy_cutout.png
           test -f trio_sylphie.jpg
           test -f trio_eris.jpg
           mkdir -p duo-stock/app/src/main/res/drawable-nodpi
           cp trio_roxy.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_roxy.jpg
+          cp trio_roxy_cutout.png duo-stock/app/src/main/res/drawable-nodpi/trio_roxy_cutout.png
           cp trio_sylphie.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_sylphie.jpg
           cp trio_eris.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_eris.jpg
-          ls -lh duo-stock/app/src/main/res/drawable-nodpi/trio_*.jpg
-          sha256sum trio_roxy.jpg trio_sylphie.jpg trio_eris.jpg
+          ls -lh duo-stock/app/src/main/res/drawable-nodpi/trio_*
+          sha256sum trio_roxy.jpg trio_roxy_cutout.png trio_sylphie.jpg trio_eris.jpg
 
       - name: Patch genuine Duo with Fold7-safe Trio foundation
         run: |
