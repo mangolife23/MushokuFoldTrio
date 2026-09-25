@@ -22,8 +22,10 @@ s = replace_once(s,
     '    val openLibrary = { scope.launch { pager.animateScrollToPage(homePages) }; Unit }\n',
     '    val openLibrary = { scope.launch { pager.animateScrollToPage(homePages) }; Unit }\n'
     '    val openAppSearch = {\n'
-    '        trioSearchRequest++\n'
-    '        scope.launch { pager.scrollToPage(homePages) }\n'
+    '        scope.launch {\n'
+    '            pager.scrollToPage(homePages)\n'
+    '            trioSearchRequest++\n'
+    '        }\n'
     '        Unit\n'
     '    }\n', "search action")
 s = replace_once(s,
