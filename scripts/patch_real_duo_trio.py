@@ -210,7 +210,8 @@ new_marker = """    private var trioLastViewportWidth = 0
         val host = findViewById<ViewGroup>(android.R.id.content) ?: return
         if (trioManaView != null) return
         val mana = TrioManaView(); mana.isClickable = false; mana.isFocusable = false
-        host.addView(mana, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)); trioManaView = mana
+        // Keep both art and mana below Duo's Compose controls and feed surfaces.
+        host.addView(mana, 2, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)); trioManaView = mana
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
@@ -241,8 +242,29 @@ new_marker = """    private var trioLastViewportWidth = 0
             while (bursts.size > 12) bursts.removeFirst(); postInvalidateOnAnimation()
         }
         fun unfoldBurst() { unfoldBorn = android.os.SystemClock.uptimeMillis(); postInvalidateOnAnimation() }
+        private fun drawRoxyCrystal(canvas: Canvas, scene: ImageView, now: Long) {
+            if (scene.tag != 0 || scene.alpha <= .01f) return
+            val art = scene.drawable ?: return
+            if (scene.width <= 0 || scene.height <= 0 || art.intrinsicWidth <= 0 || art.intrinsicHeight <= 0) return
+            // The floating crystal is at (902, 230) in the 1024x1536 cutout.
+            // Map through the artwork's fit and spring transform to stay attached.
+            val fit = kotlin.math.min(scene.width.toFloat() / art.intrinsicWidth, scene.height.toFloat() / art.intrinsicHeight)
+            val point = floatArrayOf((scene.width - art.intrinsicWidth * fit) * .5f + 902f * fit,
+                (scene.height - art.intrinsicHeight * fit) * .5f + 230f * fit)
+            scene.matrix.mapPoints(point)
+            val x = point[0] + scene.left; val y = point[1] + scene.top
+            val pulse = .5f + .5f * kotlin.math.sin(now * .003f)
+            val radius = (16f + 6f * pulse) * fit * scene.scaleX
+            paint.style = Paint.Style.FILL
+            paint.color = Color.argb((scene.alpha * 28).toInt().coerceIn(0, 255), 77, 174, 255)
+            canvas.drawCircle(x, y, radius * 2.3f, paint)
+            paint.color = Color.argb((scene.alpha * (48 + 28 * pulse)).toInt().coerceIn(0, 255), 95, 211, 255)
+            canvas.drawCircle(x, y, radius, paint)
+        }
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas); val now = android.os.SystemClock.uptimeMillis(); val w = width.toFloat().coerceAtLeast(1f); val h = height.toFloat().coerceAtLeast(1f)
+            trioSceneFront?.let { drawRoxyCrystal(canvas, it, now) }
+            trioSceneBack?.let { drawRoxyCrystal(canvas, it, now) }
             if (now - lastTouchBurst > 300L) { fieldTargetX *= .92f; fieldTargetY *= .92f }
             fieldX += (fieldTargetX - fieldX) * .08f
             fieldY += (fieldTargetY - fieldY) * .08f
