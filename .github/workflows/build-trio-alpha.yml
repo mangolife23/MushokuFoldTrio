@@ -12,6 +12,7 @@ on:
       - scripts/apply_trio_app_search.py
       - scripts/apply_trio_discover_diagnostics.py
       - scripts/apply_trio_readability.py
+      - scripts/apply_trio_eris_motion.py
       - scripts/configure_trio_signing.py
       - trio_roxy.jpg
       - trio_roxy_cutout.png
@@ -72,6 +73,7 @@ jobs:
           python3 scripts/apply_trio_app_search.py duo-stock
           python3 scripts/apply_trio_discover_diagnostics.py duo-stock
           python3 scripts/apply_trio_readability.py duo-stock
+          python3 scripts/apply_trio_eris_motion.py duo-stock
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5

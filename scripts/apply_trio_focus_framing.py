@@ -43,9 +43,27 @@ new = '''    private fun updateTrioSceneFraming() {
 
         fun apply(view: ImageView?) {
             view ?: return
-            // Roxy's transparent portrait shows the whole figure; the other
-            // landscape scenes continue filling the viewport as before.
-            view.scaleType = if (view.tag == 0) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
+            // Roxy's transparent portrait shows the whole figure. Sylphie
+            // remains centered; Eris's face is left of center in her wide art.
+            if (view.tag == 0) view.scaleType = ImageView.ScaleType.FIT_CENTER
+            else if (view.tag == 2) {
+                val art = view.drawable
+                if (art != null && art.intrinsicWidth > 0 && art.intrinsicHeight > 0 && view.width > 0 && view.height > 0) {
+                    val scale = kotlin.math.max(view.width.toFloat() / art.intrinsicWidth,
+                        view.height.toFloat() / art.intrinsicHeight)
+                    val scaledWidth = art.intrinsicWidth * scale
+                    val scaledHeight = art.intrinsicHeight * scale
+                    val faceX = if (cover) .30f else .36f
+                    val dx = (view.width * .45f - scaledWidth * faceX)
+                        .coerceIn(view.width - scaledWidth, 0f)
+                    val dy = (view.height - scaledHeight) * .5f
+                    view.scaleType = ImageView.ScaleType.MATRIX
+                    view.imageMatrix = android.graphics.Matrix().apply {
+                        setScale(scale, scale)
+                        postTranslate(dx, dy)
+                    }
+                }
+            } else view.scaleType = ImageView.ScaleType.CENTER_CROP
             // The animation owns translation and scale. Resetting them here snaps
             // the artwork on a scene switch or a Fold7 layout pass.
             view.pivotX = view.width * 0.5f
