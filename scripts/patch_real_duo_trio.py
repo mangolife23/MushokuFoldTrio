@@ -225,6 +225,7 @@ new_marker = """    private var trioLastViewportWidth = 0
     private inner class TrioManaView : View(this) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG); private val bursts = ArrayDeque<TrioBurst>()
         private val droplet = Path()
+        private val hairStream = Path()
         private val windArc = RectF()
         private var active = false
         private var fieldX = 0f; private var fieldY = 0f
@@ -249,10 +250,15 @@ new_marker = """    private var trioLastViewportWidth = 0
             // The floating crystal is at (902, 230) in the 1024x1536 cutout.
             // Map through the artwork's fit and spring transform to stay attached.
             val fit = kotlin.math.min(scene.width.toFloat() / art.intrinsicWidth, scene.height.toFloat() / art.intrinsicHeight)
-            val point = floatArrayOf((scene.width - art.intrinsicWidth * fit) * .5f + 902f * fit,
-                (scene.height - art.intrinsicHeight * fit) * .5f + 230f * fit)
-            scene.matrix.mapPoints(point)
-            val x = point[0] + scene.left; val y = point[1] + scene.top
+            fun artPoint(px: Float, py: Float): FloatArray {
+                val point = floatArrayOf((scene.width - art.intrinsicWidth * fit) * .5f + px * fit,
+                    (scene.height - art.intrinsicHeight * fit) * .5f + py * fit)
+                scene.matrix.mapPoints(point)
+                point[0] += scene.left; point[1] += scene.top
+                return point
+            }
+            val gem = artPoint(902f, 230f)
+            val x = gem[0]; val y = gem[1]
             val pulse = .5f + .5f * kotlin.math.sin(now * .003f)
             val radius = (16f + 6f * pulse) * fit * scene.scaleX
             paint.style = Paint.Style.FILL
@@ -260,6 +266,21 @@ new_marker = """    private var trioLastViewportWidth = 0
             canvas.drawCircle(x, y, radius * 2.3f, paint)
             paint.color = Color.argb((scene.alpha * (48 + 28 * pulse)).toInt().coerceIn(0, 255), 95, 211, 255)
             canvas.drawCircle(x, y, radius, paint)
+            // Soft mana threads follow the loose braid without replacing or
+            // duplicating its pixels. Their sway is independent of the art spring.
+            val bow = artPoint(852f, 606f)
+            val tip = artPoint(950f, 765f)
+            repeat(2) { i ->
+                val sway = kotlin.math.sin(now * .0017f + i * 1.4f) * (9f + i * 4f) * fit + fieldX * .18f
+                hairStream.reset()
+                hairStream.moveTo(bow[0], bow[1])
+                hairStream.cubicTo(bow[0] + (38f + i * 10f) * fit + sway, bow[1] + 25f * fit,
+                    tip[0] + sway, tip[1] - 55f * fit, tip[0] + sway, tip[1] + i * 10f * fit)
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = (1.5f + i * .5f) * fit
+                paint.color = Color.argb((scene.alpha * (62 - i * 18)).toInt().coerceIn(0, 255), 105, 201, 255)
+                canvas.drawPath(hairStream, paint)
+            }
         }
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas); val now = android.os.SystemClock.uptimeMillis(); val w = width.toFloat().coerceAtLeast(1f); val h = height.toFloat().coerceAtLeast(1f)
