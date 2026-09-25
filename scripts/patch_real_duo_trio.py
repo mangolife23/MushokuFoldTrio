@@ -225,11 +225,16 @@ new_marker = """    private var trioLastViewportWidth = 0
         private val droplet = Path()
         private val windArc = RectF()
         private var active = false
+        private var fieldX = 0f; private var fieldY = 0f
+        private var fieldTargetX = 0f; private var fieldTargetY = 0f
         private var lastTouchBurst = 0L; private var unfoldBorn = 0L; private var character = 0
         fun setActive(value: Boolean) { active = value; if (value) postInvalidateOnAnimation() }
         fun setCharacter(value: Int) { character = value % 3; invalidate() }
         fun manaTouch(x: Float, y: Float, now: Long) {
             if (!active) return
+            // The mana has its own shallow parallax, separate from the artwork spring.
+            fieldTargetX = ((x / width.coerceAtLeast(1)) - .5f) * 36f
+            fieldTargetY = ((y / height.coerceAtLeast(1)) - .5f) * 24f
             if (now - lastTouchBurst < 42L) return; lastTouchBurst = now
             bursts.addLast(TrioBurst(x, y, now, (x.toInt() * 31 + y.toInt()) and 0x7fffffff))
             while (bursts.size > 12) bursts.removeFirst(); postInvalidateOnAnimation()
@@ -237,11 +242,15 @@ new_marker = """    private var trioLastViewportWidth = 0
         fun unfoldBurst() { unfoldBorn = android.os.SystemClock.uptimeMillis(); postInvalidateOnAnimation() }
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas); val now = android.os.SystemClock.uptimeMillis(); val w = width.toFloat().coerceAtLeast(1f); val h = height.toFloat().coerceAtLeast(1f)
+            if (now - lastTouchBurst > 300L) { fieldTargetX *= .92f; fieldTargetY *= .92f }
+            fieldX += (fieldTargetX - fieldX) * .08f
+            fieldY += (fieldTargetY - fieldY) * .08f
             val rgb = when (character) { 1 -> intArrayOf(214,255,226); 2 -> intArrayOf(255,126,72); else -> intArrayOf(164,226,255) }
             repeat(16) { i ->
                 val phase = ((now * (3L + i % 2) + i * 7919L) % 32000L) / 32000f
-                val x = ((i * 0.6180339f + 0.13f) % 1f) * w + kotlin.math.sin(phase * 6.283f + i * 0.7f) * 18f
-                val y = h - phase * (h + 120f); val r = 2.2f + (i % 4) * 1.2f
+                val depth = 0.65f + (i % 3) * .25f
+                val x = ((i * 0.6180339f + 0.13f) % 1f) * w + kotlin.math.sin(phase * 6.283f + i * 0.7f) * 18f + fieldX * depth
+                val y = h - phase * (h + 120f) + fieldY * depth; val r = 2.2f + (i % 4) * 1.2f
                 when (character) {
                     1 -> { // Sylphie: short, drifting wind curves.
                         paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.4f
