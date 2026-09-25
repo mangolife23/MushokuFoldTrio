@@ -51,6 +51,7 @@ new_marker = """    private var trioLastViewportWidth = 0
     private var trioMotionY = 0f
     private var trioVelocityX = 0f
     private var trioVelocityY = 0f
+    private var trioActive = false
     private data class TrioBurst(val x: Float, val y: Float, val born: Long, val seed: Int)
 
     private fun installTrioViewportTransitionProbe() {
@@ -61,7 +62,7 @@ new_marker = """    private var trioLastViewportWidth = 0
             val previous = trioLastViewportWidth
             trioLastViewportWidth = width
             updateTrioSceneFraming()
-            if (previous <= 0 || trioRevealRunning) return@OnGlobalLayoutListener
+            if (previous <= 0 || trioRevealRunning || !trioActive) return@OnGlobalLayoutListener
             val density = resources.displayMetrics.density.coerceAtLeast(1f)
             val previousDp = previous / density
             val currentDp = width / density
@@ -90,7 +91,7 @@ new_marker = """    private var trioLastViewportWidth = 0
         host.addView(back, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         host.addView(front, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         trioSceneBack = back; trioSceneFront = front
-        showTrioScene(0, false); updateTrioSceneFraming(); scheduleTrioScene(); scheduleTrioIdleMotion()
+        showTrioScene(0, false); updateTrioSceneFraming()
     }
 
     private fun updateTrioSceneFraming() {
@@ -223,9 +224,12 @@ new_marker = """    private var trioLastViewportWidth = 0
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG); private val bursts = ArrayDeque<TrioBurst>()
         private val droplet = Path()
         private val windArc = RectF()
+        private var active = false
         private var lastTouchBurst = 0L; private var unfoldBorn = 0L; private var character = 0
+        fun setActive(value: Boolean) { active = value; if (value) postInvalidateOnAnimation() }
         fun setCharacter(value: Int) { character = value % 3; invalidate() }
         fun manaTouch(x: Float, y: Float, now: Long) {
+            if (!active) return
             if (now - lastTouchBurst < 42L) return; lastTouchBurst = now
             bursts.addLast(TrioBurst(x, y, now, (x.toInt() * 31 + y.toInt()) and 0x7fffffff))
             while (bursts.size > 12) bursts.removeFirst(); postInvalidateOnAnimation()
@@ -269,7 +273,7 @@ new_marker = """    private var trioLastViewportWidth = 0
             }
             expired.forEach { bursts.remove(it) }
             if(unfoldBorn>0L){val age=now-unfoldBorn;if(age<950L){val t=age/950f;repeat(2){ring->paint.style=Paint.Style.STROKE;paint.strokeWidth=(6f-ring*2f)*(1f-t)+1f;paint.color=Color.argb(((1f-t)*(145-ring*35)).toInt(),160,230,255);canvas.drawCircle(w/2f,h/2f,36f+ring*28f+t*kotlin.math.max(w,h)*(.56f+ring*.06f),paint)}}else unfoldBorn=0L}
-            if(bursts.isNotEmpty()||unfoldBorn>0L||isShown)postInvalidateOnAnimation()
+            if(active)postInvalidateOnAnimation()
         }
     }
 
@@ -281,6 +285,31 @@ new_marker = """    private var trioLastViewportWidth = 0
     }
 
     override fun onStart() {
+"""
+
+old_lifecycle_start = """    override fun onStart() {
+        super.onStart(); widgets.host.startListening()
+"""
+new_lifecycle_start = """    override fun onStart() {
+        super.onStart(); widgets.host.startListening()
+        trioActive = true
+        trioManaView?.setActive(true)
+        scheduleTrioScene()
+        scheduleTrioIdleMotion()
+"""
+
+old_lifecycle_stop = """    override fun onStop() {
+        if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
+"""
+new_lifecycle_stop = """    override fun onStop() {
+        trioActive = false
+        trioManaView?.setActive(false)
+        val host = findViewById<View>(android.R.id.content)
+        trioSceneRunnable?.let { host?.removeCallbacks(it) }
+        trioIdleRunnable?.let { host?.removeCallbacks(it) }
+        window.decorView.removeCallbacks(trioTouchReset)
+        trioTouchTargetX = 0f; trioTouchTargetY = 0f
+        if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
 """
 
 old_destroy = """    override fun onDestroy() {
@@ -297,7 +326,7 @@ new_destroy = """    override fun onDestroy() {
         recreatingShadeSetup = isChangingConfigurations
 """
 
-for old,new,label in ((old_import,new_import,"imports"),(old_attach,new_attach,"attachment"),(old_marker,new_marker,"Fold7/mana methods"),(old_destroy,new_destroy,"cleanup")):
+for old,new,label in ((old_import,new_import,"imports"),(old_attach,new_attach,"attachment"),(old_marker,new_marker,"Fold7/mana methods"),(old_lifecycle_start,new_lifecycle_start,"start lifecycle"),(old_lifecycle_stop,new_lifecycle_stop,"stop lifecycle"),(old_destroy,new_destroy,"cleanup")):
     if m.count(old) != 1: raise SystemExit(f"Pinned upstream {label} block changed; refusing unsafe patch")
     m=m.replace(old,new,1)
 main.write_text(m)
