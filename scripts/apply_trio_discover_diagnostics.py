@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Expose the Google feed bind rejection on the prototype recovery screen."""
+"""Diagnose Google feed binds and probe an empty overlay descriptor."""
 from pathlib import Path
 import sys
 
@@ -14,13 +14,17 @@ old = '''                if (runCatching { service.interfaceDescriptor }.getOrNu
                 }
 '''
 new = '''                val descriptor = runCatching { service.interfaceDescriptor }.getOrNull()
-                if (descriptor != OVERLAY) {
-                    Log.w(TAG, "Google feed binder rejected: descriptor=${descriptor ?: "unavailable"}")
-                    failed("Google returned ${descriptor ?: "no feed interface"} instead of its launcher feed. Open Google, then retry.", attempt)
+                if (name.packageName != GOOGLE_PACKAGE || (!descriptor.isNullOrBlank() && descriptor != OVERLAY)) {
+                    Log.w(TAG, "Google feed binder rejected: package=${name.packageName}, descriptor=${descriptor ?: "unavailable"}")
+                    failed("Google returned ${descriptor?.takeIf { it.isNotBlank() } ?: "no feed interface"} instead of its launcher feed. Open Google, then retry.", attempt)
                     return
                 }
+                // Some Google builds provide an empty descriptor for this service.
+                // Probe only Google's bound service and require its ready callback;
+                // the existing timeout keeps an unresponsive binder recoverable.
+                if (descriptor.isNullOrBlank()) Log.w(TAG, "Google feed binder has no descriptor; probing launcher overlay")
 '''
 if s.count(old) != 1:
     raise SystemExit("Pinned upstream feed binder check changed; refusing unsafe patch")
 client.write_text(s.replace(old, new, 1))
-print("Added prototype Discover bind diagnostics without changing the accepted protocol")
+print("Added Discover diagnostics and a guarded empty-descriptor overlay probe")
