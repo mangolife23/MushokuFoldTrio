@@ -42,6 +42,8 @@ new_marker = """    private var trioLastViewportWidth = 0
     private var trioIdleRunnable: Runnable? = null
     private var trioTouchX = 0f
     private var trioTouchY = 0f
+    private var trioTouchTargetX = 0f
+    private var trioTouchTargetY = 0f
     private data class TrioBurst(val x: Float, val y: Float, val born: Long, val seed: Int)
 
     private fun installTrioViewportTransitionProbe() {
@@ -105,7 +107,10 @@ new_marker = """    private var trioLastViewportWidth = 0
         val oldFront = front; val newFront = back
         newFront.setImageResource(res)
         newFront.alpha = if (animate) 0f else 1.0f
-        newFront.scaleX = 1f; newFront.scaleY = 1f
+        // Keep the incoming art covered until the next idle frame takes over.
+        newFront.scaleX = oldFront.scaleX; newFront.scaleY = oldFront.scaleY
+        newFront.translationX = oldFront.translationX
+        newFront.translationY = oldFront.translationY
         newFront.animate().cancel(); oldFront.animate().cancel()
         if (animate) {
             newFront.animate().alpha(1.0f).setDuration(1800L).start()
@@ -134,9 +139,17 @@ new_marker = """    private var trioLastViewportWidth = 0
                 val density = resources.displayMetrics.density.coerceAtLeast(1f)
                 val widthDp = window.decorView.width / density
                 val amplitude = if (widthDp < 650f) 5f else 9f
-                front.translationX = kotlin.math.sin(t * 0.34f) * amplitude + trioTouchX
-                front.translationY = kotlin.math.sin(t * 0.47f + 1.1f) * (amplitude * .55f) + trioTouchY
-                val breathe = 1f + kotlin.math.sin(t * 0.72f) * .0045f
+                // Ease touch motion back to rest; an immediate reset looked like a snap.
+                trioTouchX += (trioTouchTargetX - trioTouchX) * .12f
+                trioTouchY += (trioTouchTargetY - trioTouchY) * .12f
+                val phase = when (trioSceneIndex) { 1 -> 1.8f; 2 -> 3.5f; else -> 0f }
+                front.translationX = kotlin.math.sin(t * .34f + phase) * amplitude + trioTouchX
+                front.translationY = kotlin.math.sin(t * .47f + 1.1f + phase) * (amplitude * .55f) + trioTouchY
+                // Overscan is computed from the smaller viewport dimension, so
+                // translation and breathing cannot reveal a black edge on either screen.
+                val shortSide = kotlin.math.min(front.width, front.height).coerceAtLeast(1)
+                val overscan = (2f * (amplitude + 6f) + 16f) / shortSide
+                val breathe = 1f + overscan + kotlin.math.sin(t * .72f + phase) * .0045f
                 front.scaleX = breathe
                 front.scaleY = breathe
                 host.postDelayed(this, 32L)
@@ -149,15 +162,15 @@ new_marker = """    private var trioLastViewportWidth = 0
     private fun nudgeTrioScene(x: Float, y: Float) {
         val root = window.decorView
         if (root.width <= 0 || root.height <= 0) return
-        trioTouchX = ((x / root.width) - .5f) * -10f
-        trioTouchY = ((y / root.height) - .5f) * -6f
+        trioTouchTargetX = ((x / root.width) - .5f) * -10f
+        trioTouchTargetY = ((y / root.height) - .5f) * -6f
         root.removeCallbacks(trioTouchReset)
         root.postDelayed(trioTouchReset, 260L)
     }
 
     private val trioTouchReset = Runnable {
-        trioTouchX = 0f
-        trioTouchY = 0f
+        trioTouchTargetX = 0f
+        trioTouchTargetY = 0f
     }
 
     private fun installTrioManaLayer() {
