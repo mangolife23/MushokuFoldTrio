@@ -1,9 +1,8 @@
-name: Build MushokuFoldTrio Alpha
+name: Build MushokuFoldTrio Native Prototype
 
 on:
   push:
     branches:
-      - main
       - native-animation-prototype
     paths:
       - .github/workflows/build-trio-alpha.yml
@@ -39,6 +38,11 @@ jobs:
           echo "Expected: $EXPECTED"
           echo "Actual:   $ACTUAL"
           test "$ACTUAL" = "$EXPECTED"
+
+      - name: Give prototype an isolated Android identity
+        run: |
+          sed -i 's/applicationId = "com.jake.duolauncher"/applicationId = "com.otakuhoarder.mushokufold.nativeprototype"/' duo-stock/app/build.gradle.kts
+          grep -F 'applicationId = "com.otakuhoarder.mushokufold.nativeprototype"' duo-stock/app/build.gradle.kts
 
       - name: Package Trio artwork
         run: |
@@ -76,22 +80,22 @@ jobs:
         working-directory: duo-stock
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:dependencies > ../MushokuFoldTrio-Alpha-3-dependencies.txt
-          sha256sum gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties >> ../MushokuFoldTrio-Alpha-3-dependencies.txt
+          ./gradlew --no-daemon :app:dependencies > ../MushokuFoldNativePrototype-dependencies.txt
+          sha256sum gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties >> ../MushokuFoldNativePrototype-dependencies.txt
 
-      - name: Build genuine DuoLauncher Trio Alpha
+      - name: Build native prototype
         working-directory: duo-stock
         run: ./gradlew --no-daemon :app:assembleDebug
 
       - name: Verify and fingerprint APK
         run: |
           test -f duo-stock/app/build/outputs/apk/debug/app-debug.apk
-          cp duo-stock/app/build/outputs/apk/debug/app-debug.apk MushokuFoldTrio-Alpha-3.apk
-          sha256sum MushokuFoldTrio-Alpha-3.apk | tee MushokuFoldTrio-Alpha-3.sha256
+          cp duo-stock/app/build/outputs/apk/debug/app-debug.apk MushokuFoldNativePrototype.apk
+          sha256sum MushokuFoldNativePrototype.apk | tee MushokuFoldNativePrototype.sha256
 
       - name: Generate APK security provenance report
         run: |
-          APK="MushokuFoldTrio-Alpha-3.apk"
+          APK="MushokuFoldNativePrototype.apk"
           AAPT="/usr/local/lib/android/sdk/build-tools/36.0.0/aapt2"
           APKSIGNER="/usr/local/lib/android/sdk/build-tools/36.0.0/apksigner"
           {
@@ -119,15 +123,15 @@ jobs:
             echo
             echo "Badging/package identity"
             "$AAPT" dump badging "$APK" | head -n 40
-          } | tee MushokuFoldTrio-Alpha-3-security.txt
+          } | tee MushokuFoldNativePrototype-security.txt
 
-      - name: Upload MushokuFoldTrio Alpha
+      - name: Upload native prototype
         uses: actions/upload-artifact@v4
         with:
-          name: MushokuFoldTrio-Alpha-3
+          name: MushokuFoldNativePrototype
           path: |
-            MushokuFoldTrio-Alpha-3.apk
-            MushokuFoldTrio-Alpha-3.sha256
-            MushokuFoldTrio-Alpha-3-security.txt
-            MushokuFoldTrio-Alpha-3-dependencies.txt
+            MushokuFoldNativePrototype.apk
+            MushokuFoldNativePrototype.sha256
+            MushokuFoldNativePrototype-security.txt
+            MushokuFoldNativePrototype-dependencies.txt
           if-no-files-found: error
