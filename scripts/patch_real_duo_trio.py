@@ -22,6 +22,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.animation.DecelerateInterpolator
+import kotlin.math.pow
 """
 
 old_attach = """        FoldRenderExperiment.attach(this)
@@ -117,6 +118,7 @@ new_marker = """    private var trioLastViewportWidth = 0
         newFront.scaleX = oldFront.scaleX; newFront.scaleY = oldFront.scaleY
         newFront.translationX = oldFront.translationX
         newFront.translationY = oldFront.translationY
+        newFront.rotation = oldFront.rotation
         newFront.animate().cancel(); oldFront.animate().cancel()
         if (animate) {
             newFront.animate().alpha(1.0f).setDuration(1800L).start()
@@ -138,16 +140,22 @@ new_marker = """    private var trioLastViewportWidth = 0
         val host = findViewById<View>(android.R.id.content) ?: return
         trioIdleRunnable?.let(host::removeCallbacks)
         val started = android.os.SystemClock.uptimeMillis()
+        var lastFrame = started
         val task = object : Runnable {
             override fun run() {
                 val front = trioSceneFront ?: return
-                val t = (android.os.SystemClock.uptimeMillis() - started) / 1000f
+                val now = android.os.SystemClock.uptimeMillis()
+                val t = (now - started) / 1000f
+                // Bound a resumed frame so a pause cannot launch the artwork across the screen.
+                val frame = ((now - lastFrame).coerceIn(1L, 64L) / 32f)
+                lastFrame = now
                 val density = resources.displayMetrics.density.coerceAtLeast(1f)
                 val widthDp = window.decorView.width / density
                 val amplitude = if (widthDp < 650f) 5f else 9f
                 // Ease touch motion back to rest; an immediate reset looked like a snap.
-                trioTouchX += (trioTouchTargetX - trioTouchX) * .12f
-                trioTouchY += (trioTouchTargetY - trioTouchY) * .12f
+                val touchEase = 1f - .88f.pow(frame)
+                trioTouchX += (trioTouchTargetX - trioTouchX) * touchEase
+                trioTouchY += (trioTouchTargetY - trioTouchY) * touchEase
                 val phase = when (trioSceneIndex) { 1 -> 1.8f; 2 -> 3.5f; else -> 0f }
                 // Give each character a slightly different physical cadence. Roxy glides,
                 // Sylphie feels lighter, and Eris settles with a firmer spring.
@@ -155,20 +163,26 @@ new_marker = """    private var trioLastViewportWidth = 0
                 val damping = when (trioSceneIndex) { 1 -> .86f; 2 -> .79f; else -> .83f }
                 val idleX = kotlin.math.sin(t * .34f + phase) * amplitude + trioTouchX
                 val idleY = kotlin.math.sin(t * .47f + 1.1f + phase) * (amplitude * .55f) + trioTouchY
-                trioVelocityX = (trioVelocityX + (idleX - trioMotionX) * spring) * damping
-                trioVelocityY = (trioVelocityY + (idleY - trioMotionY) * spring) * damping
-                trioMotionX += trioVelocityX
-                trioMotionY += trioVelocityY
-                front.translationX = trioMotionX
-                front.translationY = trioMotionY
-                front.rotation = kotlin.math.sin(t * .22f + phase) * when (trioSceneIndex) { 1 -> .16f; 2 -> .10f; else -> .13f }
+                trioVelocityX = (trioVelocityX + (idleX - trioMotionX) * spring * frame) * damping.pow(frame)
+                trioVelocityY = (trioVelocityY + (idleY - trioMotionY) * spring * frame) * damping.pow(frame)
+                trioMotionX += trioVelocityX * frame
+                trioMotionY += trioVelocityY * frame
+                val rotation = kotlin.math.sin(t * .22f + phase) * when (trioSceneIndex) { 1 -> .16f; 2 -> .10f; else -> .13f }
                 // Overscan is computed from the smaller viewport dimension, so
                 // translation and breathing cannot reveal a black edge on either screen.
                 val shortSide = kotlin.math.min(front.width, front.height).coerceAtLeast(1)
                 val overscan = (2f * (amplitude + 6f) + 16f) / shortSide
                 val breathe = 1f + overscan + kotlin.math.sin(t * .72f + phase) * .0045f
-                front.scaleX = breathe
-                front.scaleY = breathe
+                // Both artwork views move together while their alpha crossfades.
+                // Otherwise the departing character appears to freeze mid-motion.
+                for (scene in arrayOf(front, trioSceneBack)) {
+                    scene ?: continue
+                    scene.translationX = trioMotionX
+                    scene.translationY = trioMotionY
+                    scene.rotation = rotation
+                    scene.scaleX = breathe
+                    scene.scaleY = breathe
+                }
                 host.postDelayed(this, 32L)
             }
         }
