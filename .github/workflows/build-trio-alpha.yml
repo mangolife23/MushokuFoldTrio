@@ -10,6 +10,7 @@ on:
       - scripts/apply_trio_focus_framing.py
       - scripts/apply_trio_background_layer.py
       - scripts/apply_trio_app_search.py
+      - scripts/apply_trio_discover_diagnostics.py
       - trio_roxy.jpg
       - trio_roxy_cutout.png
       - trio_sylphie.jpg
@@ -66,6 +67,7 @@ jobs:
           python3 scripts/apply_trio_focus_framing.py duo-stock
           python3 scripts/apply_trio_background_layer.py duo-stock
           python3 scripts/apply_trio_app_search.py duo-stock
+          python3 scripts/apply_trio_discover_diagnostics.py duo-stock
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
