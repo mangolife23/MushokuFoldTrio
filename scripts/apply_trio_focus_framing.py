@@ -24,8 +24,7 @@ new = '''    private fun updateTrioSceneFraming() {
         val widthDp = window.decorView.width / density
         val cover = widthDp in 1f..649.99f
 
-        // Artwork-only correction: always fill the actual launcher viewport so no
-        // letterbox/gap can appear above the image. Keep DuoLauncher UI untouched.
+        // Fill the launcher viewport without interrupting ongoing artwork motion.
         // CENTER_CROP preserves aspect ratio and crops overflow rather than fitting
         // the entire bitmap inside the view.
         val focusY = if (cover) {
@@ -45,12 +44,8 @@ new = '''    private fun updateTrioSceneFraming() {
         fun apply(view: ImageView?) {
             view ?: return
             view.scaleType = ImageView.ScaleType.CENTER_CROP
-            // Do not translate the ImageView itself: translating it can expose the
-            // host background as a visible top strip. Let CENTER_CROP fill every edge.
-            view.translationX = 0f
-            view.translationY = 0f
-            view.scaleX = 1f
-            view.scaleY = 1f
+            // The animation owns translation and scale. Resetting them here snaps
+            // the artwork on a scene switch or a Fold7 layout pass.
             view.pivotX = view.width * 0.5f
             view.pivotY = view.height * focusY
         }
