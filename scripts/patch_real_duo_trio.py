@@ -39,6 +39,9 @@ new_marker = """    private var trioLastViewportWidth = 0
     private var trioSceneBack: ImageView? = null
     private var trioSceneIndex = 0
     private var trioSceneRunnable: Runnable? = null
+    private var trioIdleRunnable: Runnable? = null
+    private var trioTouchX = 0f
+    private var trioTouchY = 0f
     private data class TrioBurst(val x: Float, val y: Float, val born: Long, val seed: Int)
 
     private fun installTrioViewportTransitionProbe() {
@@ -78,7 +81,7 @@ new_marker = """    private var trioLastViewportWidth = 0
         host.addView(back, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         host.addView(front, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         trioSceneBack = back; trioSceneFront = front
-        showTrioScene(0, false); updateTrioSceneFraming(); scheduleTrioScene()
+        showTrioScene(0, false); updateTrioSceneFraming(); scheduleTrioScene(); scheduleTrioIdleMotion()
     }
 
     private fun updateTrioSceneFraming() {
@@ -120,6 +123,43 @@ new_marker = """    private var trioLastViewportWidth = 0
         trioSceneRunnable = task; host.postDelayed(task, 30000L)
     }
 
+    private fun scheduleTrioIdleMotion() {
+        val host = findViewById<View>(android.R.id.content) ?: return
+        trioIdleRunnable?.let(host::removeCallbacks)
+        val started = android.os.SystemClock.uptimeMillis()
+        val task = object : Runnable {
+            override fun run() {
+                val front = trioSceneFront ?: return
+                val t = (android.os.SystemClock.uptimeMillis() - started) / 1000f
+                val density = resources.displayMetrics.density.coerceAtLeast(1f)
+                val widthDp = window.decorView.width / density
+                val amplitude = if (widthDp < 650f) 5f else 9f
+                front.translationX = kotlin.math.sin(t * 0.34f) * amplitude + trioTouchX
+                front.translationY = kotlin.math.sin(t * 0.47f + 1.1f) * (amplitude * .55f) + trioTouchY
+                val breathe = 1f + kotlin.math.sin(t * 0.72f) * .0045f
+                front.scaleX = breathe
+                front.scaleY = breathe
+                host.postDelayed(this, 32L)
+            }
+        }
+        trioIdleRunnable = task
+        host.post(task)
+    }
+
+    private fun nudgeTrioScene(x: Float, y: Float) {
+        val root = window.decorView
+        if (root.width <= 0 || root.height <= 0) return
+        trioTouchX = ((x / root.width) - .5f) * -10f
+        trioTouchY = ((y / root.height) - .5f) * -6f
+        root.removeCallbacks(trioTouchReset)
+        root.postDelayed(trioTouchReset, 260L)
+    }
+
+    private val trioTouchReset = Runnable {
+        trioTouchX = 0f
+        trioTouchY = 0f
+    }
+
     private fun installTrioManaLayer() {
         val host = findViewById<ViewGroup>(android.R.id.content) ?: return
         if (trioManaView != null) return
@@ -128,7 +168,10 @@ new_marker = """    private var trioLastViewportWidth = 0
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        if (ev.actionMasked == MotionEvent.ACTION_DOWN || ev.actionMasked == MotionEvent.ACTION_MOVE) trioManaView?.manaTouch(ev.x, ev.y, ev.eventTime)
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN || ev.actionMasked == MotionEvent.ACTION_MOVE) {
+            trioManaView?.manaTouch(ev.x, ev.y, ev.eventTime)
+            nudgeTrioScene(ev.x, ev.y)
+        }
         return super.dispatchTouchEvent(ev)
     }
 
@@ -181,7 +224,10 @@ new_destroy = """    override fun onDestroy() {
         trioLayoutListener?.let { listener -> window.decorView.viewTreeObserver.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(listener) }
         trioLayoutListener = null
         trioSceneRunnable?.let { findViewById<View>(android.R.id.content)?.removeCallbacks(it) }
-        trioSceneRunnable = null; trioSceneFront = null; trioSceneBack = null; trioManaView = null
+        trioSceneRunnable = null
+        trioIdleRunnable?.let { findViewById<View>(android.R.id.content)?.removeCallbacks(it) }
+        window.decorView.removeCallbacks(trioTouchReset)
+        trioIdleRunnable = null; trioSceneFront = null; trioSceneBack = null; trioManaView = null
         recreatingShadeSetup = isChangingConfigurations
 """
 
