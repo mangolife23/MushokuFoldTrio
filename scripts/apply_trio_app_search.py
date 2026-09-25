@@ -70,6 +70,7 @@ s = library.read_text()
 s = replace_once(s, 'import androidx.compose.ui.platform.testTag\n',
     'import androidx.compose.ui.platform.testTag\n'
     'import androidx.compose.ui.platform.LocalSoftwareKeyboardController\n'
+    'import androidx.compose.ui.platform.LocalFocusManager\n'
     'import androidx.compose.ui.focus.FocusRequester\n'
     'import androidx.compose.ui.focus.focusRequester\n', "focus imports")
 s = replace_once(s,
@@ -80,10 +81,13 @@ s = replace_once(s,
     '    val glass = !editing\n',
     '    val focusRequester = remember { FocusRequester() }\n'
     '    val keyboard = LocalSoftwareKeyboardController.current\n'
+    '    val focusManager = LocalFocusManager.current\n'
     '    LaunchedEffect(focusRequest) {\n'
     '        if (focusRequest > 0) {\n'
-    '            withFrameNanos { }\n'
+    '            focusManager.clearFocus(force = true)\n'
+    '            repeat(2) { withFrameNanos { } }\n'
     '            focusRequester.requestFocus()\n'
+    '            withFrameNanos { }\n'
     '            keyboard?.show()\n'
     '            onFocusConsumed()\n'
     '        }\n'
