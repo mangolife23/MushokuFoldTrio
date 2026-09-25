@@ -46,6 +46,10 @@ new_marker = """    private var trioLastViewportWidth = 0
     private var trioTouchY = 0f
     private var trioTouchTargetX = 0f
     private var trioTouchTargetY = 0f
+    private var trioMotionX = 0f
+    private var trioMotionY = 0f
+    private var trioVelocityX = 0f
+    private var trioVelocityY = 0f
     private data class TrioBurst(val x: Float, val y: Float, val born: Long, val seed: Int)
 
     private fun installTrioViewportTransitionProbe() {
@@ -145,8 +149,19 @@ new_marker = """    private var trioLastViewportWidth = 0
                 trioTouchX += (trioTouchTargetX - trioTouchX) * .12f
                 trioTouchY += (trioTouchTargetY - trioTouchY) * .12f
                 val phase = when (trioSceneIndex) { 1 -> 1.8f; 2 -> 3.5f; else -> 0f }
-                front.translationX = kotlin.math.sin(t * .34f + phase) * amplitude + trioTouchX
-                front.translationY = kotlin.math.sin(t * .47f + 1.1f + phase) * (amplitude * .55f) + trioTouchY
+                // Give each character a slightly different physical cadence. Roxy glides,
+                // Sylphie feels lighter, and Eris settles with a firmer spring.
+                val spring = when (trioSceneIndex) { 1 -> .050f; 2 -> .075f; else -> .060f }
+                val damping = when (trioSceneIndex) { 1 -> .86f; 2 -> .79f; else -> .83f }
+                val idleX = kotlin.math.sin(t * .34f + phase) * amplitude + trioTouchX
+                val idleY = kotlin.math.sin(t * .47f + 1.1f + phase) * (amplitude * .55f) + trioTouchY
+                trioVelocityX = (trioVelocityX + (idleX - trioMotionX) * spring) * damping
+                trioVelocityY = (trioVelocityY + (idleY - trioMotionY) * spring) * damping
+                trioMotionX += trioVelocityX
+                trioMotionY += trioVelocityY
+                front.translationX = trioMotionX
+                front.translationY = trioMotionY
+                front.rotation = kotlin.math.sin(t * .22f + phase) * when (trioSceneIndex) { 1 -> .16f; 2 -> .10f; else -> .13f }
                 // Overscan is computed from the smaller viewport dimension, so
                 // translation and breathing cannot reveal a black edge on either screen.
                 val shortSide = kotlin.math.min(front.width, front.height).coerceAtLeast(1)
