@@ -15,9 +15,11 @@ on:
       - scripts/apply_trio_eris_motion.py
       - scripts/apply_trio_feed_bounds_diagnostics.py
       - scripts/apply_trio_motion_depth.py
+      - scripts/apply_trio_roxy_expression.py
       - scripts/configure_trio_signing.py
       - trio_roxy.jpg
       - trio_roxy_cutout.png
+      - trio_roxy_sneeze.webp
       - trio_sylphie.jpg
       - trio_eris.jpg
   workflow_dispatch:
@@ -57,15 +59,17 @@ jobs:
         run: |
           test -f trio_roxy.jpg
           test -f trio_roxy_cutout.png
+          test -f trio_roxy_sneeze.webp
           test -f trio_sylphie.jpg
           test -f trio_eris.jpg
           mkdir -p duo-stock/app/src/main/res/drawable-nodpi
           cp trio_roxy.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_roxy.jpg
           cp trio_roxy_cutout.png duo-stock/app/src/main/res/drawable-nodpi/trio_roxy_cutout.png
+          cp trio_roxy_sneeze.webp duo-stock/app/src/main/res/drawable-nodpi/trio_roxy_sneeze.webp
           cp trio_sylphie.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_sylphie.jpg
           cp trio_eris.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_eris.jpg
           ls -lh duo-stock/app/src/main/res/drawable-nodpi/trio_*
-          sha256sum trio_roxy.jpg trio_roxy_cutout.png trio_sylphie.jpg trio_eris.jpg
+          sha256sum trio_roxy.jpg trio_roxy_cutout.png trio_roxy_sneeze.webp trio_sylphie.jpg trio_eris.jpg
 
       - name: Patch genuine Duo with Fold7-safe Trio foundation
         run: |
@@ -78,6 +82,7 @@ jobs:
           python3 scripts/apply_trio_eris_motion.py duo-stock
           python3 scripts/apply_trio_feed_bounds_diagnostics.py duo-stock
           python3 scripts/apply_trio_motion_depth.py duo-stock
+          python3 scripts/apply_trio_roxy_expression.py duo-stock
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
