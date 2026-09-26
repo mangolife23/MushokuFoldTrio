@@ -18,6 +18,7 @@ on:
       - scripts/apply_trio_roxy_expression.py
       - scripts/apply_trio_roxy_reach.py
       - scripts/apply_trio_reach_icon.py
+      - scripts/apply_trio_natural_motion.py
       - scripts/configure_trio_signing.py
       - trio_roxy.jpg
       - trio_roxy_cutout.png
@@ -90,6 +91,7 @@ jobs:
           python3 scripts/apply_trio_roxy_expression.py duo-stock
           python3 scripts/apply_trio_roxy_reach.py duo-stock
           python3 scripts/apply_trio_reach_icon.py duo-stock
+          python3 scripts/apply_trio_natural_motion.py duo-stock
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
