@@ -123,6 +123,7 @@ public final class ControlCenterActivity extends Activity {
         LinearLayout.LayoutParams infoP = new LinearLayout.LayoutParams(-1, -2);
         infoP.topMargin = dp(10); infoP.bottomMargin = dp(14); live.addView(info, infoP);
         button(live, "PREVIEW & APPLY LIVE TRIO", this::openLive);
+        button(live, "NEXT SCENE NOW", () -> select((scene + 1) % TrioScenes.NAMES.length));
         button(live, "CAST MANA PULSE", () -> mana.burst(.5f, .45f));
         button(live, "OPEN HOME UI", () -> startActivity(new Intent(this, MainActivity.class)));
 
@@ -208,7 +209,7 @@ public final class ControlCenterActivity extends Activity {
         if (current != null) current.setText(TrioScenes.NAMES[scene] + " • Motion Reactive");
     }
     private void updateRotation(boolean on) {
-        rotationStatus.setText(on ? "3-scene gallery active • transition every 30 seconds"
+        rotationStatus.setText(on ? "3-scene gallery active • transition every 12 seconds"
             : "Rotation paused • selected character stays active");
     }
     private void openLive() {

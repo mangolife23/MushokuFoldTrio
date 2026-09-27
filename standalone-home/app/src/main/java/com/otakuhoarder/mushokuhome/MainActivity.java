@@ -8,8 +8,6 @@ import android.content.SharedPreferences;
 import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.graphics.RenderEffect;
-import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -40,7 +38,7 @@ import java.util.Locale;
 
 public final class MainActivity extends Activity {
     private static final String[] NAMES = TrioScenes.NAMES;
-    private static final int[] BACK = TrioScenes.BACK;
+    private static final int[] BACK = TrioScenes.SCENERY;
     private static final int[] REST = TrioScenes.REST;
     private static final int[] BLINK = TrioScenes.BLINK;
     private static final int[] REACH = TrioScenes.REACH;
@@ -71,7 +69,7 @@ public final class MainActivity extends Activity {
                 switchScene((scene + 1) % NAMES.length);
                 return;
             }
-            handler.postDelayed(this, 30000L);
+            handler.postDelayed(this, 12000L);
         }
     };
 
@@ -105,7 +103,7 @@ public final class MainActivity extends Activity {
         handler.removeCallbacks(beat);
         handler.postDelayed(beat, 5000L);
         handler.removeCallbacks(rotate);
-        handler.postDelayed(rotate, 30000L);
+        handler.postDelayed(rotate, 12000L);
     }
     @Override protected void onPause() {
         active = false;
@@ -176,8 +174,7 @@ public final class MainActivity extends Activity {
         root.setBackgroundColor(0xff10192a);
         setContentView(root);
         backdrop = artwork(BACK[scene], ImageView.ScaleType.CENTER_CROP);
-        backdrop.setAlpha(.46f);
-        backdrop.setRenderEffect(RenderEffect.createBlurEffect(dp(38), dp(38), Shader.TileMode.CLAMP));
+        backdrop.setAlpha(.88f);
         root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
         View shade = new View(this);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -281,7 +278,7 @@ public final class MainActivity extends Activity {
         render();
         mana.burst(.5f, .45f);
         handler.removeCallbacks(rotate);
-        if (active) handler.postDelayed(rotate, 30000L);
+        if (active) handler.postDelayed(rotate, 12000L);
     }
     private void animateIdle(FrameLayout target, boolean forward) {
         if (target != art) return;

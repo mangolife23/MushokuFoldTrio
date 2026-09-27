@@ -4,8 +4,10 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -18,10 +20,11 @@ public final class TrioLiveWallpaperService extends WallpaperService {
     @Override public Engine onCreateEngine() { return new TrioEngine(); }
 
     private final class TrioEngine extends Engine {
-        private static final long SCENE_MS = 30000L, FADE_MS = 1800L;
+        private static final long SCENE_MS = 12000L, FADE_MS = 1400L;
         private final Handler handler = new Handler(Looper.getMainLooper());
         private final Paint artPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Paint fxPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint statusShade = new Paint();
         private final SharedPreferences prefs = getSharedPreferences(TrioScenes.PREFS, MODE_PRIVATE);
         private final Runnable frame = new Runnable() {
             @Override public void run() {
@@ -39,18 +42,21 @@ public final class TrioLiveWallpaperService extends WallpaperService {
 
         @Override public void onSurfaceCreated(SurfaceHolder holder) {
             super.onSurfaceCreated(holder);
+            setTouchEventsEnabled(true);
             surfaceReady = true;
             start();
         }
         @Override public void onSurfaceChanged(SurfaceHolder holder, int format, int w, int h) {
             super.onSurfaceChanged(holder, format, w, h);
             width = w; height = h; surfaceReady = true;
+            statusShade.setShader(new LinearGradient(0, 0, 0, height * .25f,
+                0xa0081425, 0x00081425, Shader.TileMode.CLAMP));
             if (portrait == null) loadCurrent();
             start();
         }
         @Override public void onVisibilityChanged(boolean shown) {
             visible = shown;
-            if (shown) { lastScene = SystemClock.uptimeMillis(); start(); }
+            if (shown) start();
             else handler.removeCallbacks(frame);
         }
         @Override public void onSurfaceDestroyed(SurfaceHolder holder) {
@@ -66,6 +72,13 @@ public final class TrioLiveWallpaperService extends WallpaperService {
                 pulse(e.getX() / width, e.getY() / height);
             super.onTouchEvent(e);
         }
+        @Override public android.os.Bundle onCommand(String action, int x, int y, int z,
+                                                      android.os.Bundle extras, boolean resultRequested) {
+            if ((android.app.WallpaperManager.COMMAND_TAP.equals(action) ||
+                 android.app.WallpaperManager.COMMAND_SECONDARY_TAP.equals(action)) && width > 0 && height > 0)
+                pulse(x >= 0 ? x / (float) width : .5f, y >= 0 ? y / (float) height : .5f);
+            return super.onCommand(action, x, y, z, extras, resultRequested);
+        }
         private void start() {
             handler.removeCallbacks(frame);
             if (visible && surfaceReady && width > 0 && height > 0) handler.post(frame);
@@ -79,31 +92,27 @@ public final class TrioLiveWallpaperService extends WallpaperService {
             BitmapFactory.decodeResource(getResources(), id, bounds);
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inSampleSize = 1;
-            // Keep a screen-sized source; portrait assets remain 4K in the APK.
-            int desired = Math.max(width, height);
+            // Decode near display size; the original assets remain 4K in the APK.
+            int desired = Math.min(1920, Math.max(width, height));
             while (options.inSampleSize * 2 <= 4 && bounds.outHeight / (options.inSampleSize * 2) >= desired)
                 options.inSampleSize *= 2;
             return BitmapFactory.decodeResource(getResources(), id, options);
         }
         private Bitmap back(int id) {
             BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = 16;
-            Bitmap source = BitmapFactory.decodeResource(getResources(), id, options);
-            if (source == null) return null;
-            Bitmap tiny = Bitmap.createScaledBitmap(source, 72, 128, true);
-            if (tiny != source) source.recycle();
-            return tiny;
+            options.inSampleSize = 2;
+            return BitmapFactory.decodeResource(getResources(), id, options);
         }
         private void loadCurrent() {
             release();
             portrait = decode(TrioScenes.REST[scene]);
-            blurredBack = back(TrioScenes.BACK[scene]);
+            blurredBack = back(TrioScenes.SCENERY[scene]);
         }
         private void queueScene(int requested, long now) {
             if (nextScene >= 0 || requested == scene) return;
             try {
                 nextPortrait = decode(TrioScenes.REST[requested]);
-                nextBack = back(TrioScenes.BACK[requested]);
+                nextBack = back(TrioScenes.SCENERY[requested]);
                 if (nextPortrait != null) {
                     nextScene = requested; fadeAt = now; pulse(.5f, .44f);
                 } else recycle(nextBack);
@@ -141,6 +150,7 @@ public final class TrioLiveWallpaperService extends WallpaperService {
                     drawScene(c, nextPortrait, nextBack, nextScene, (int) (255 * eased), seconds);
                     if (t >= 1f) finish(now);
                 }
+                c.drawRect(0, 0, width, height * .25f, statusShade);
                 drawMana(c, now, seconds);
             } catch (RuntimeException ignored) {
                 // The surface can disappear while a Home or wallpaper preview changes.
@@ -150,8 +160,12 @@ public final class TrioLiveWallpaperService extends WallpaperService {
         }
         private void drawScene(Canvas c, Bitmap character, Bitmap background, int index, int alpha, float time) {
             if (background != null) {
-                artPaint.setAlpha((int) (alpha * .42f));
-                c.drawBitmap(background, null, new RectF(0, 0, width, height), artPaint);
+                float scale = Math.max(width / (float) background.getWidth(), height / (float) background.getHeight());
+                float bw = background.getWidth() * scale, bh = background.getHeight() * scale;
+                artPaint.setAlpha((int) (alpha * .78f));
+                c.drawBitmap(background, null,
+                    new RectF((width - bw) * .5f, (height - bh) * .5f,
+                        (width + bw) * .5f, (height + bh) * .5f), artPaint);
             }
             if (character != null) {
                 float scale = Math.min(width * .98f / character.getWidth(), height * .93f / character.getHeight());
