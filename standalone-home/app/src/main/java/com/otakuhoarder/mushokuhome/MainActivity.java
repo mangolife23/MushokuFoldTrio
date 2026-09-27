@@ -1,6 +1,7 @@
 package com.otakuhoarder.mushokuhome;
 
 import android.app.Activity;
+import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
@@ -339,6 +340,16 @@ public final class MainActivity extends Activity {
         search.setPadding(dp(14), 0, dp(14), 0);
         search.setBackground(panel(0xff34445c, 18));
         toolbar.addView(search, new LinearLayout.LayoutParams(0, dp(48), 1));
+        RoleManager roles = getSystemService(RoleManager.class);
+        if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_HOME) &&
+            !roles.isRoleHeld(RoleManager.ROLE_HOME)) {
+            TextView chooseHome = label("Make Mushoku Home my default Home app", 15, 0xff10192a);
+            chooseHome.setBackground(panel(TINT[scene], 16));
+            LinearLayout.LayoutParams chooseParams = new LinearLayout.LayoutParams(-1, dp(48));
+            chooseParams.setMargins(0, dp(10), 0, dp(5));
+            sheet.addView(chooseHome, chooseParams);
+            chooseHome.setOnClickListener(v -> startActivity(roles.createRequestRoleIntent(RoleManager.ROLE_HOME)));
+        }
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(false);
         sheet.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
