@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -38,15 +39,17 @@ import java.util.List;
 import java.util.Locale;
 
 public final class MainActivity extends Activity {
-    private static final String[] NAMES = {"Roxy", "Sylphie", "Eris"};
-    private static final int[] BACK = {R.drawable.trio_roxy, R.drawable.trio_sylphie_source, R.drawable.trio_eris_source};
-    private static final int[] REST = {R.drawable.trio_roxy_cutout, R.drawable.trio_sylphie_cutout_4k, R.drawable.trio_eris_cutout_4k};
-    private static final int[] BLINK = {R.drawable.trio_roxy_sneeze, R.drawable.trio_sylphie_blink_4k, R.drawable.trio_eris_blink_4k};
-    private static final int[] REACH = {R.drawable.trio_roxy_reach, R.drawable.trio_sylphie_reach_4k, R.drawable.trio_eris_reach_4k};
-    private static final int[] TINT = {0xff78b8f6, 0xffb6e9b4, 0xffffb18a};
+    private static final String[] NAMES = TrioScenes.NAMES;
+    private static final int[] BACK = TrioScenes.BACK;
+    private static final int[] REST = TrioScenes.REST;
+    private static final int[] BLINK = TrioScenes.BLINK;
+    private static final int[] REACH = TrioScenes.REACH;
+    private static final int[] TINT = TrioScenes.TINT;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<ResolveInfo> apps = new ArrayList<>();
+    private SharedPreferences prefs;
     private FrameLayout root, art, drawer;
+    private ManaOverlayView mana;
     private ImageView backdrop, resting, blink, reach;
     private LinearLayout chips, dock;
     private TextView caption;
@@ -61,10 +64,21 @@ public final class MainActivity extends Activity {
             if (active) handler.postDelayed(this, 9200L);
         }
     };
+    private final Runnable rotate = new Runnable() {
+        @Override public void run() {
+            if (!active) return;
+            if (drawer == null && prefs.getBoolean("rotation_enabled", true)) {
+                switchScene((scene + 1) % NAMES.length);
+                return;
+            }
+            handler.postDelayed(this, 30000L);
+        }
+    };
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        if (state != null) scene = state.getInt("scene", 0);
+        prefs = getSharedPreferences(TrioScenes.PREFS, MODE_PRIVATE);
+        scene = TrioScenes.bounded(prefs.getInt("active_scene", 0));
         getWindow().setStatusBarColor(0xff172034);
         getWindow().setNavigationBarColor(0xff111826);
         getWindow().getDecorView().setSystemUiVisibility(0);
@@ -84,10 +98,14 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         active = true;
+        int selected = TrioScenes.bounded(prefs.getInt("active_scene", scene));
+        if (selected != scene) { scene = selected; render(); }
         readApps();
         if (dock != null) populateDock();
         handler.removeCallbacks(beat);
         handler.postDelayed(beat, 5000L);
+        handler.removeCallbacks(rotate);
+        handler.postDelayed(rotate, 30000L);
     }
     @Override protected void onPause() {
         active = false;
@@ -189,12 +207,18 @@ public final class MainActivity extends Activity {
                         if (dx > 0 && scene == 0) openGoogle();
                         else switchScene((scene + (dx < 0 ? 1 : 2)) % 3);
                     } else if (dy < -dp(55)) openDrawer();
-                    else if (Math.abs(dx) < dp(24) && Math.abs(dy) < dp(24)) playReach();
+                    else if (Math.abs(dx) < dp(24) && Math.abs(dy) < dp(24)) {
+                        mana.burst(event.getX() / Math.max(1, art.getWidth()), event.getY() / Math.max(1, art.getHeight()));
+                        playReach();
+                    }
                     return true;
                 default: return true;
             }
         });
         animateIdle(art, true);
+        mana = new ManaOverlayView(this);
+        mana.setScene(scene);
+        root.addView(mana, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -212,6 +236,10 @@ public final class MainActivity extends Activity {
         chips.setGravity(Gravity.CENTER);
         header.addView(chips, new LinearLayout.LayoutParams(0, -1, 1));
         populateChips();
+        TextView controls = label("✦", 24, 0xffd9f1ff);
+        controls.setContentDescription("Open Trio Control Center");
+        header.addView(controls, new LinearLayout.LayoutParams(dp(42), -1));
+        controls.setOnClickListener(v -> startActivity(new Intent(this, ControlCenterActivity.class)));
         TextView find = label("⌕", 32, 0xffe5f0ff);
         find.setContentDescription("Search apps");
         header.addView(find, new LinearLayout.LayoutParams(dp(46), -1));
@@ -248,8 +276,12 @@ public final class MainActivity extends Activity {
     private void switchScene(int next) {
         if (scene == next) return;
         scene = next;
+        prefs.edit().putInt("active_scene", scene).apply();
         closeDrawer();
         render();
+        mana.burst(.5f, .45f);
+        handler.removeCallbacks(rotate);
+        if (active) handler.postDelayed(rotate, 30000L);
     }
     private void animateIdle(FrameLayout target, boolean forward) {
         if (target != art) return;
@@ -272,6 +304,7 @@ public final class MainActivity extends Activity {
     }
     private void playReach() {
         int token = ++generation;
+        if (mana != null) mana.burst(.5f, .5f);
         reach.animate().cancel();
         reach.setAlpha(0f);
         reach.animate().alpha(1f).setDuration(240).start();
