@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.RenderEffect;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -155,7 +157,8 @@ public final class MainActivity extends Activity {
         root.setBackgroundColor(0xff10192a);
         setContentView(root);
         backdrop = artwork(BACK[scene], ImageView.ScaleType.CENTER_CROP);
-        backdrop.setAlpha(.38f);
+        backdrop.setAlpha(.46f);
+        backdrop.setRenderEffect(RenderEffect.createBlurEffect(dp(38), dp(38), Shader.TileMode.CLAMP));
         root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
         View shade = new View(this);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -197,7 +200,7 @@ public final class MainActivity extends Activity {
                 default: return true;
             }
         });
-        animateIdle();
+        animateIdle(art, true);
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -254,15 +257,15 @@ public final class MainActivity extends Activity {
         closeDrawer();
         render();
     }
-    private void animateIdle() {
-        art.animate().cancel();
-        art.setTranslationX(0); art.setTranslationY(0); art.setRotation(0);
+    private void animateIdle(FrameLayout target, boolean forward) {
+        if (target != art) return;
         float shift = scene == 2 ? 4f : 7f;
-        art.animate().translationX(dp(shift)).translationY(dp(-5)).rotation(scene == 1 ? .35f : .22f)
-            .setDuration(scene == 2 ? 3900 : 5100).withEndAction(() -> {
-                if (!active || art == null) return;
-                art.animate().translationX(dp(-shift)).translationY(dp(5)).rotation(-.22f)
-                    .setDuration(scene == 2 ? 3900 : 5100).withEndAction(this::animateIdle).start();
+        target.animate().translationX(dp(forward ? shift : -shift))
+            .translationY(dp(forward ? -5 : 5))
+            .rotation(forward && scene == 1 ? .35f : -.22f)
+            .setDuration(scene == 2 ? 3900 : 5100)
+            .withEndAction(() -> {
+                if (active && target == art) animateIdle(target, !forward);
             }).start();
     }
     private void playBeat() {
