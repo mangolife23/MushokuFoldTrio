@@ -24,13 +24,16 @@ on:
       - scripts/apply_trio_artwork_response.py
       - scripts/apply_trio_reach_choreography.py
       - scripts/apply_trio_sylphie_eris_beats.py
+      - scripts/apply_trio_sylphie_eris_expressions.py
       - scripts/configure_trio_signing.py
       - trio_roxy.jpg
       - trio_roxy_cutout.png
       - trio_roxy_sneeze.webp
       - trio_roxy_reach.webp
       - trio_sylphie.jpg
+      - trio_sylphie_blink.webp
       - trio_eris.jpg
+      - trio_eris_blink.webp
   workflow_dispatch:
 
 jobs:
@@ -71,16 +74,20 @@ jobs:
           test -f trio_roxy_sneeze.webp
           test -f trio_roxy_reach.webp
           test -f trio_sylphie.jpg
+          test -f trio_sylphie_blink.webp
           test -f trio_eris.jpg
+          test -f trio_eris_blink.webp
           mkdir -p duo-stock/app/src/main/res/drawable-nodpi
           cp trio_roxy.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_roxy.jpg
           cp trio_roxy_cutout.png duo-stock/app/src/main/res/drawable-nodpi/trio_roxy_cutout.png
           cp trio_roxy_sneeze.webp duo-stock/app/src/main/res/drawable-nodpi/trio_roxy_sneeze.webp
           cp trio_roxy_reach.webp duo-stock/app/src/main/res/drawable-nodpi/trio_roxy_reach.webp
           cp trio_sylphie.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_sylphie.jpg
+          cp trio_sylphie_blink.webp duo-stock/app/src/main/res/drawable-nodpi/trio_sylphie_blink.webp
           cp trio_eris.jpg duo-stock/app/src/main/res/drawable-nodpi/trio_eris.jpg
+          cp trio_eris_blink.webp duo-stock/app/src/main/res/drawable-nodpi/trio_eris_blink.webp
           ls -lh duo-stock/app/src/main/res/drawable-nodpi/trio_*
-          sha256sum trio_roxy.jpg trio_roxy_cutout.png trio_roxy_sneeze.webp trio_roxy_reach.webp trio_sylphie.jpg trio_eris.jpg
+          sha256sum trio_roxy.jpg trio_roxy_cutout.png trio_roxy_sneeze.webp trio_roxy_reach.webp trio_sylphie.jpg trio_sylphie_blink.webp trio_eris.jpg trio_eris_blink.webp
 
       - name: Patch genuine Duo with Fold7-safe Trio foundation
         run: |
@@ -102,6 +109,7 @@ jobs:
           python3 scripts/apply_trio_artwork_response.py duo-stock
           python3 scripts/apply_trio_reach_choreography.py duo-stock
           python3 scripts/apply_trio_sylphie_eris_beats.py duo-stock
+          python3 scripts/apply_trio_sylphie_eris_expressions.py duo-stock
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
