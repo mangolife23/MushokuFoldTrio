@@ -35,6 +35,10 @@ jobs:
           test -s "$APK"
           /usr/local/lib/android/sdk/build-tools/36.0.0/aapt dump badging "$APK" | tee MushokuHome-badging.txt
           grep -F "package: name='com.otakuhoarder.mushokuhome'" MushokuHome-badging.txt
+          /usr/local/lib/android/sdk/build-tools/36.0.0/aapt dump xmltree "$APK" AndroidManifest.xml > MushokuHome-manifest.txt
+          grep -F 'android.intent.category.HOME' MushokuHome-manifest.txt
+          grep -F 'android.service.wallpaper.WallpaperService' MushokuHome-manifest.txt
+          grep -F 'android.permission.BIND_WALLPAPER' MushokuHome-manifest.txt
           cp "$APK" MushokuHome.apk
           sha256sum MushokuHome.apk > MushokuHome.sha256
       - uses: actions/upload-artifact@v4
@@ -44,4 +48,5 @@ jobs:
             MushokuHome.apk
             MushokuHome.sha256
             MushokuHome-badging.txt
+            MushokuHome-manifest.txt
           if-no-files-found: error

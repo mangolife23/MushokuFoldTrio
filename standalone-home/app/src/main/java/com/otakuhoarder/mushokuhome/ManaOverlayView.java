@@ -16,6 +16,10 @@ final class ManaOverlayView extends View {
 
     ManaOverlayView(Context context) { super(context); setClickable(false); }
     void setScene(int value) { scene = TrioScenes.bounded(value); invalidate(); }
+    @Override protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (visibility == VISIBLE) invalidate();
+    }
     void burst(float x, float y) {
         burstX = x; burstY = y; burstAt = SystemClock.uptimeMillis(); invalidate();
     }
@@ -43,6 +47,6 @@ final class ManaOverlayView extends View {
             c.drawCircle(burstX * w, burstY * h, radius, paint);
             c.drawCircle(burstX * w, burstY * h, radius * .62f, paint);
         }
-        if (isAttachedToWindow() && getVisibility() == VISIBLE) postInvalidateDelayed(40L);
+        if (isShown()) postInvalidateDelayed(40L);
     }
 }
