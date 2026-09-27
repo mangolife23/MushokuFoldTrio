@@ -1,0 +1,47 @@
+name: Build Mushoku Home
+
+on:
+  push:
+    branches: [native-animation-prototype]
+    paths:
+      - standalone-home/**
+      - .github/workflows/build-mushoku-home.yml
+  workflow_dispatch:
+
+jobs:
+  build-home:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Build independent home app
+        working-directory: standalone-home
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleDebug
+      - name: Verify Android home role and APK
+        run: |
+          APK=standalone-home/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          /usr/local/lib/android/sdk/build-tools/36.0.0/aapt dump badging "$APK" | tee MushokuHome-badging.txt
+          grep -F "package: name='com.otakuhoarder.mushokuhome'" MushokuHome-badging.txt
+          cp "$APK" MushokuHome.apk
+          sha256sum MushokuHome.apk > MushokuHome.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MushokuHome
+          path: |
+            MushokuHome.apk
+            MushokuHome.sha256
+            MushokuHome-badging.txt
+          if-no-files-found: error
