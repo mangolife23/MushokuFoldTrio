@@ -39,10 +39,10 @@ import java.util.Locale;
 
 public final class MainActivity extends Activity {
     private static final String[] NAMES = {"Roxy", "Sylphie", "Eris"};
-    private static final int[] BACK = {R.drawable.trio_roxy, R.drawable.trio_sylphie, R.drawable.trio_eris};
-    private static final int[] REST = {R.drawable.trio_roxy_cutout, R.drawable.trio_sylphie, R.drawable.trio_eris};
-    private static final int[] BLINK = {R.drawable.trio_roxy_sneeze, R.drawable.trio_sylphie_blink, R.drawable.trio_eris_blink};
-    private static final int[] REACH = {R.drawable.trio_roxy_reach, R.drawable.trio_sylphie_reach, R.drawable.trio_eris_reach};
+    private static final int[] BACK = {R.drawable.trio_roxy, R.drawable.trio_sylphie_source, R.drawable.trio_eris_source};
+    private static final int[] REST = {R.drawable.trio_roxy_cutout, R.drawable.trio_sylphie_cutout_4k, R.drawable.trio_eris_cutout_4k};
+    private static final int[] BLINK = {R.drawable.trio_roxy_sneeze, R.drawable.trio_sylphie_blink_4k, R.drawable.trio_eris_blink_4k};
+    private static final int[] REACH = {R.drawable.trio_roxy_reach, R.drawable.trio_sylphie_reach_4k, R.drawable.trio_eris_reach_4k};
     private static final int[] TINT = {0xff78b8f6, 0xffb6e9b4, 0xffffb18a};
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<ResolveInfo> apps = new ArrayList<>();
@@ -169,22 +169,15 @@ public final class MainActivity extends Activity {
         art = new FrameLayout(this);
         FrameLayout.LayoutParams artParams = new FrameLayout.LayoutParams(-1, -1);
         root.addView(art, artParams);
-        boolean portraitCutout = scene == 0;
         ImageView.ScaleType scale = ImageView.ScaleType.FIT_CENTER;
         resting = artwork(REST[scene], scale);
         blink = artwork(BLINK[scene], scale);
         reach = artwork(REACH[scene], scale);
-        if (portraitCutout) {
-            FrameLayout.LayoutParams portrait = new FrameLayout.LayoutParams(-1, -1);
-            portrait.setMargins(dp(8), dp(18), dp(8), dp(75));
-            art.addView(resting, portrait);
-            art.addView(blink, new FrameLayout.LayoutParams(portrait));
-            art.addView(reach, new FrameLayout.LayoutParams(portrait));
-        } else {
-            art.addView(resting, new FrameLayout.LayoutParams(-1, -1));
-            art.addView(blink, new FrameLayout.LayoutParams(-1, -1));
-            art.addView(reach, new FrameLayout.LayoutParams(-1, -1));
-        }
+        FrameLayout.LayoutParams portrait = new FrameLayout.LayoutParams(-1, -1);
+        portrait.setMargins(dp(8), dp(18), dp(8), dp(75));
+        art.addView(resting, portrait);
+        art.addView(blink, new FrameLayout.LayoutParams(portrait));
+        art.addView(reach, new FrameLayout.LayoutParams(portrait));
         blink.setAlpha(0f); reach.setAlpha(0f);
         art.setOnTouchListener((v, event) -> {
             switch (event.getActionMasked()) {
