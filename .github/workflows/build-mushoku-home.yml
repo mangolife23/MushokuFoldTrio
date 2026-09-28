@@ -71,6 +71,13 @@ jobs:
             sleep 12
             adb shell screencap -p /sdcard/mushoku-preview.png
             adb pull /sdcard/mushoku-preview.png MushokuHome-preview.png
+            adb shell input tap 720 2800
+            sleep 3
+            adb shell input tap 720 2400
+            sleep 8
+            adb shell screencap -p /sdcard/mushoku-applied.png
+            adb pull /sdcard/mushoku-applied.png MushokuHome-applied.png
+            adb shell dumpsys wallpaper > MushokuHome-wallpaper-state.txt
             adb logcat -d > MushokuHome-emulator.log
             grep -F 'First wallpaper frame posted' MushokuHome-emulator.log
             ! grep -E 'FATAL EXCEPTION.*|OutOfMemoryError' MushokuHome-emulator.log
@@ -81,5 +88,7 @@ jobs:
           name: MushokuHome-preview-diagnostics
           path: |
             MushokuHome-preview.png
+            MushokuHome-applied.png
+            MushokuHome-wallpaper-state.txt
             MushokuHome-emulator.log
           if-no-files-found: ignore
