@@ -50,6 +50,7 @@ public final class TrioLiveWallpaperService extends WallpaperService {
 
         @Override public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
+            setTouchEventsEnabled(true);
             prefs = getSharedPreferences(TrioScenes.PREFS, MODE_PRIVATE);
             scene = TrioScenes.bounded(prefs.getInt("active_scene", 0));
             Log.i(TAG, "Wallpaper preferences ready");
@@ -57,7 +58,6 @@ public final class TrioLiveWallpaperService extends WallpaperService {
         @Override public void onSurfaceCreated(SurfaceHolder holder) {
             Log.i(TAG, "Wallpaper surface created");
             super.onSurfaceCreated(holder);
-            setTouchEventsEnabled(true);
             surfaceReady = true;
             visible = isVisible();
             start();
