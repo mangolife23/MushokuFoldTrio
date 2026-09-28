@@ -12,11 +12,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.service.wallpaper.WallpaperService;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 
 /** Independent live wallpaper: three transparent portraits, timed fades, touch mana. */
 public final class TrioLiveWallpaperService extends WallpaperService {
+    private static final String TAG = "TrioLiveWallpaper";
     @Override public Engine onCreateEngine() { return new TrioEngine(); }
 
     private final class TrioEngine extends Engine {
@@ -37,6 +39,7 @@ public final class TrioLiveWallpaperService extends WallpaperService {
         private int scene = TrioScenes.bounded(prefs.getInt("active_scene", 0));
         private int nextScene = -1, width, height;
         private boolean visible, surfaceReady;
+        private boolean firstFramePosted;
         private long lastScene = SystemClock.uptimeMillis(), fadeAt, pulseAt = -10000L;
         private float pulseX = .5f, pulseY = .5f;
 
@@ -44,14 +47,19 @@ public final class TrioLiveWallpaperService extends WallpaperService {
             super.onSurfaceCreated(holder);
             setTouchEventsEnabled(true);
             surfaceReady = true;
+            visible = isVisible();
             start();
         }
         @Override public void onSurfaceChanged(SurfaceHolder holder, int format, int w, int h) {
             super.onSurfaceChanged(holder, format, w, h);
             width = w; height = h; surfaceReady = true;
+            visible = isVisible();
             statusShade.setShader(new LinearGradient(0, 0, 0, height * .25f,
                 0xa0081425, 0x00081425, Shader.TileMode.CLAMP));
             if (portrait == null) loadCurrent();
+            // Some wallpaper pickers show the surface before delivering visibility.
+            // Post the first completed frame now so their preview can become ready.
+            drawFrame();
             start();
         }
         @Override public void onVisibilityChanged(boolean shown) {
@@ -61,6 +69,7 @@ public final class TrioLiveWallpaperService extends WallpaperService {
         }
         @Override public void onSurfaceDestroyed(SurfaceHolder holder) {
             surfaceReady = false; handler.removeCallbacks(frame);
+            firstFramePosted = false;
             release();
             super.onSurfaceDestroyed(holder);
         }
@@ -152,10 +161,19 @@ public final class TrioLiveWallpaperService extends WallpaperService {
                 }
                 c.drawRect(0, 0, width, height * .25f, statusShade);
                 drawMana(c, now, seconds);
-            } catch (RuntimeException ignored) {
-                // The surface can disappear while a Home or wallpaper preview changes.
+            } catch (RuntimeException failure) {
+                Log.w(TAG, "Could not render wallpaper frame", failure);
             } finally {
-                if (c != null) getSurfaceHolder().unlockCanvasAndPost(c);
+                if (c != null) {
+                    try {
+                        getSurfaceHolder().unlockCanvasAndPost(c);
+                        if (!firstFramePosted) {
+                            firstFramePosted = true;
+                            Log.i(TAG, "First wallpaper frame posted");
+                        }
+                    }
+                    catch (RuntimeException failure) { Log.w(TAG, "Could not post wallpaper frame", failure); }
+                }
             }
         }
         private void drawScene(Canvas c, Bitmap character, Bitmap background, int index, int alpha, float time) {

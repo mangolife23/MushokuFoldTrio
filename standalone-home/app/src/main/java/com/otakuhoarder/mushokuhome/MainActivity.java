@@ -8,7 +8,10 @@ import android.content.SharedPreferences;
 import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
@@ -164,7 +167,18 @@ public final class MainActivity extends Activity {
     }
     private ImageView artwork(int id, ImageView.ScaleType scale) {
         ImageView v = new ImageView(this);
-        v.setImageResource(id);
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeResource(getResources(), id, bounds);
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = 1;
+        int display = Math.min(1920, Math.max(getResources().getDisplayMetrics().widthPixels,
+            getResources().getDisplayMetrics().heightPixels));
+        while (options.inSampleSize < 4 && Math.max(bounds.outWidth, bounds.outHeight)
+            / (options.inSampleSize * 2) >= display)
+            options.inSampleSize *= 2;
+        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), id, options);
+        if (bitmap != null) v.setImageDrawable(new BitmapDrawable(getResources(), bitmap));
         v.setScaleType(scale);
         return v;
     }

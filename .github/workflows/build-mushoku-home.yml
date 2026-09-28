@@ -50,3 +50,36 @@ jobs:
             MushokuHome-badging.txt
             MushokuHome-manifest.txt
           if-no-files-found: error
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Smoke test Home and live wallpaper preview
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          script: |
+            adb install MushokuHome.apk
+            adb logcat -c
+            adb shell am start -n com.otakuhoarder.mushokuhome/.MainActivity
+            sleep 5
+            adb shell am start -a android.service.wallpaper.CHANGE_LIVE_WALLPAPER --ecn android.service.wallpaper.extra.LIVE_WALLPAPER_COMPONENT com.otakuhoarder.mushokuhome/.TrioLiveWallpaperService
+            sleep 12
+            adb shell screencap -p /sdcard/mushoku-preview.png
+            adb pull /sdcard/mushoku-preview.png MushokuHome-preview.png
+            adb logcat -d > MushokuHome-emulator.log
+            grep -F 'First wallpaper frame posted' MushokuHome-emulator.log
+            ! grep -E 'FATAL EXCEPTION.*|OutOfMemoryError' MushokuHome-emulator.log
+      - name: Upload preview diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MushokuHome-preview-diagnostics
+          path: |
+            MushokuHome-preview.png
+            MushokuHome-emulator.log
+          if-no-files-found: ignore
