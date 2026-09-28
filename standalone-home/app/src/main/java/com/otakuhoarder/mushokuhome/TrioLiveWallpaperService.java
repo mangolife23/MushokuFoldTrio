@@ -21,7 +21,9 @@ public final class TrioLiveWallpaperService extends WallpaperService {
     private static final String TAG = "TrioLiveWallpaper";
     @Override public Engine onCreateEngine() {
         Log.i(TAG, "Wallpaper engine created");
-        return new TrioEngine();
+        TrioEngine engine = new TrioEngine();
+        Log.i(TAG, "Wallpaper engine initialized");
+        return engine;
     }
 
     private final class TrioEngine extends Engine {
@@ -30,7 +32,7 @@ public final class TrioLiveWallpaperService extends WallpaperService {
         private final Paint artPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Paint fxPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint statusShade = new Paint();
-        private final SharedPreferences prefs = getSharedPreferences(TrioScenes.PREFS, MODE_PRIVATE);
+        private SharedPreferences prefs;
         private final Runnable frame = new Runnable() {
             @Override public void run() {
                 if (!visible || !surfaceReady) return;
@@ -39,14 +41,21 @@ public final class TrioLiveWallpaperService extends WallpaperService {
             }
         };
         private Bitmap portrait, blurredBack, nextPortrait, nextBack;
-        private int scene = TrioScenes.bounded(prefs.getInt("active_scene", 0));
+        private int scene;
         private int nextScene = -1, width, height;
         private boolean visible, surfaceReady;
         private boolean firstFramePosted;
         private long lastScene = SystemClock.uptimeMillis(), fadeAt, pulseAt = -10000L;
         private float pulseX = .5f, pulseY = .5f;
 
+        @Override public void onCreate(SurfaceHolder holder) {
+            super.onCreate(holder);
+            prefs = getSharedPreferences(TrioScenes.PREFS, MODE_PRIVATE);
+            scene = TrioScenes.bounded(prefs.getInt("active_scene", 0));
+            Log.i(TAG, "Wallpaper preferences ready");
+        }
         @Override public void onSurfaceCreated(SurfaceHolder holder) {
+            Log.i(TAG, "Wallpaper surface created");
             super.onSurfaceCreated(holder);
             setTouchEventsEnabled(true);
             surfaceReady = true;
@@ -54,6 +63,7 @@ public final class TrioLiveWallpaperService extends WallpaperService {
             start();
         }
         @Override public void onSurfaceChanged(SurfaceHolder holder, int format, int w, int h) {
+            Log.i(TAG, "Wallpaper surface changed to " + w + "x" + h);
             super.onSurfaceChanged(holder, format, w, h);
             width = w; height = h; surfaceReady = true;
             visible = isVisible();
