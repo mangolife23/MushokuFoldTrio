@@ -19,7 +19,10 @@ import android.view.SurfaceHolder;
 /** Independent live wallpaper: three transparent portraits, timed fades, touch mana. */
 public final class TrioLiveWallpaperService extends WallpaperService {
     private static final String TAG = "TrioLiveWallpaper";
-    @Override public Engine onCreateEngine() { return new TrioEngine(); }
+    @Override public Engine onCreateEngine() {
+        Log.i(TAG, "Wallpaper engine created");
+        return new TrioEngine();
+    }
 
     private final class TrioEngine extends Engine {
         private static final long SCENE_MS = 12000L, FADE_MS = 1400L;

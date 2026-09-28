@@ -61,19 +61,23 @@ jobs:
           api-level: 35
           target: google_apis
           arch: x86_64
-          profile: pixel_7_pro
+          profile: pixel_2
           script: |
+            adb shell wm size 1080x2400
+            sleep 15
             adb install MushokuHome.apk
             adb logcat -c
             adb shell am start -n com.otakuhoarder.mushokuhome/.MainActivity
-            sleep 5
+            sleep 8
+            adb shell screencap -p /sdcard/mushoku-home.png
+            adb pull /sdcard/mushoku-home.png MushokuHome-home.png
             adb shell am start -a android.service.wallpaper.CHANGE_LIVE_WALLPAPER --ecn android.service.wallpaper.extra.LIVE_WALLPAPER_COMPONENT com.otakuhoarder.mushokuhome/.TrioLiveWallpaperService
             sleep 12
             adb shell screencap -p /sdcard/mushoku-preview.png
             adb pull /sdcard/mushoku-preview.png MushokuHome-preview.png
-            adb shell input tap 720 2800
+            adb shell input tap 540 2150
             sleep 3
-            adb shell input tap 720 2400
+            adb shell input tap 540 1800
             sleep 8
             adb shell screencap -p /sdcard/mushoku-applied.png
             adb pull /sdcard/mushoku-applied.png MushokuHome-applied.png
@@ -87,6 +91,7 @@ jobs:
         with:
           name: MushokuHome-preview-diagnostics
           path: |
+            MushokuHome-home.png
             MushokuHome-preview.png
             MushokuHome-applied.png
             MushokuHome-wallpaper-state.txt

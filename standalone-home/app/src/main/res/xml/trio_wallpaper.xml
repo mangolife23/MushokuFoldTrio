@@ -1,2 +1,3 @@
 <wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
-    android:description="@string/trio_wallpaper_description"/>
+    android:description="@string/trio_wallpaper_description"
+    android:thumbnail="@drawable/trio_roxy_cutout"/>
